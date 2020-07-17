@@ -1,0 +1,9 @@
+         # create a function `f`
+         f <- function(val, verbose=FALSE) {
+             if (verbose) {
+                 cat("I am calling f().\n")
+             }
+             2 * pi * val
+         }
+         # call the function `f` with argument value 3
+         f(3)
