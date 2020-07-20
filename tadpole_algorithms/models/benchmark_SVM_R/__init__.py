@@ -24,10 +24,55 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
 logger = logging.getLogger(__name__)
+#this import is for use R code into Python
+from rpy2 import robjects
+from rpy2.robjects.packages import importr
+import rpy2.robjects.packages as rpackages
+from rpy2.robjects.vectors import StrVector
+
+class BenchmarkSVM_R(TadpoleModel):
+    
+    def call_R_func(self, val):
+        
+        output = robjects.r('''# create a function `f`
+             f <- function(val, verbose=FALSE) {
+                 if (verbose) {
+                     cat("I am calling f().\n")
+                 }
+                 2 * pi * val
+             }
+             # call the function `f` with argument value 3
+             f(3)''')
+        return output
+    def preprocess_df_R(self,dataframe):
+        #this function parse a python dataframe to a R dataframe
+        feature_dict = {}
+        for colname in dataframe.columns:
+            # What happens if we pass the wrong type?
+            feature_dict[colname] = robjects.FloatVector(dataframe[colname])
+        
+        dataframe_R = robjects.DataFrame(feature_dict)
+        return dataframe_R
+        
+        
+   
+    def modelfitting_R(self, model,formula,dataframe):
+        formula_R = robjects.Formula(formula) 
+        #we load de lm func and predict 
+        r_model = robjects.r[model]
+        #r_predict = robjects.r["predict"]
+        model =  r_model(formula=formula_R, data=dataframe)
+
+        return model
+
+    def predict_R(self,model,test_df):
+        r_predict = robjects.r["predict"]
+        predictions = r_predict(model, test_df)
+        return predictions
 
 
-class BenchmarkLastVisit(TadpoleModel):
 
+#end R functions
     def preprocess(self, train_df):
         logger.info("Pre-processing")
         train_df = train_df.copy()
@@ -146,4 +191,6 @@ class BenchmarkLastVisit(TadpoleModel):
             new_df = new_df.append(df_copy)
 
         return new_df
+    
+
 
