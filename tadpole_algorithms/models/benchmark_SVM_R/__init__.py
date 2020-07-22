@@ -32,18 +32,17 @@ from rpy2.robjects.vectors import StrVector
 
 class BenchmarkSVM_R(TadpoleModel):
     
-    def call_R_func(self, val):
-        
-        output = robjects.r('''# create a function `f`
-             f <- function(val, verbose=FALSE) {
-                 if (verbose) {
-                     cat("I am calling f().\n")
-                 }
-                 2 * pi * val
-             }
-             # call the function `f` with argument value 3
-             f(3)''')
-        return output
+
+    
+    def tadpole_tidyng(self):
+
+        tadpole_tidying_script = ""
+        with open('./tadpole_tidying_script_R.txt', 'r') as file:
+        #this file contains the BSWIMS function 
+            tadpole_tidying_script = file.read()
+        tidy_dataframe = robjects.r(tadpole_tidying_script)
+        return tidy_dataframe
+
     def preprocess_df_R(self,dataframe):
         #this function parse a python dataframe to a R dataframe
         feature_dict = {}
@@ -58,9 +57,7 @@ class BenchmarkSVM_R(TadpoleModel):
    
     def modelfitting_R(self, model,formula,dataframe):
         formula_R = robjects.Formula(formula) 
-        #we load de lm func and predict 
         r_model = robjects.r[model]
-        #r_predict = robjects.r["predict"]
         model =  r_model(formula=formula_R, data=dataframe)
 
         return model
@@ -69,6 +66,15 @@ class BenchmarkSVM_R(TadpoleModel):
         r_predict = robjects.r["predict"]
         predictions = r_predict(model, test_df)
         return predictions
+
+    def SVM_fitting_R(self,formula,dataframe):
+        e1071 = importr('e1071')
+        r_svm = robjects.r["svm"]
+        #r_false = robjects.r["FALSE"]
+        formula_R = robjects.Formula(formula) 
+        model = r_svm(formula=formula_R, data=dataframe, kernel = "linear", cost = 10, scale = 0)
+        return model
+
 
 
 
