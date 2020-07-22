@@ -1,0 +1,135 @@
+---
+title: "TADPOLE MCI to AD Conversion"
+output: html_notebook
+---
+
+```{r}
+library("FRESA.CAD")
+
+```
+
+# Predict MCI to AD progresion
+
+```{r}
+load(file="allAdusted.RDATA")
+load(file="allAdustedZrank.RDATA")
+allAdusted <- allAdustedZrank
+
+```
+
+
+## Get All the MCI subjects that progressed
+
+```{r}
+table(allAdusted$DX)
+MCISubset <- subset(allAdusted,(DX_bl == "LMCI" | DX_bl == "EMCI") & DX == "MCI")
+MCISubset <- MCISubset[order(MCISubset$Years_bl),]
+MCISubset <- MCISubset[order(MCISubset$PTID),]
+
+pdis <- MCISubset$PTID
+lastTimepointSet <- MCISubset[c(pdis[1:(length(pdis)-1)] != pdis[-1],TRUE),]
+rownames(lastTimepointSet) <- lastTimepointSet$PTID
+hist(lastTimepointSet$Years_bl)
+
+subsetMCIADConversion <-  as.data.frame(subset(allAdusted,DX == "MCI to Dementia"))
+pidss <- subsetMCIADConversion$PTID
+tpids <- table(pidss)
+removeTp <- tpids[pidss] == 1
+sum(removeTp == FALSE)
+
+subsetMCIADConversion <- subsetMCIADConversion[removeTp,]
+
+rownames(subsetMCIADConversion) <- subsetMCIADConversion$PTID
+
+```
+
+### Subset by time points
+
+```{r}
+months <- c(0,3,6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96,102,108,114,120)
+
+MCItoADorderbytimepoint <- NULL
+for (m in months)
+{
+  TimePointsMCISubset <- subset(MCISubset,M == m)
+  rownames(TimePointsMCISubset) <-  TimePointsMCISubset$PTID
+  TimePointsMCISubset$TimeToEvent <- subsetMCIADConversion[TimePointsMCISubset$PTID,"Years_bl"] - TimePointsMCISubset$Years_bl
+  TimePointsMCISubset$TimeToLastVisit <- lastTimepointSet[TimePointsMCISubset$PTID,"Years_bl"] - TimePointsMCISubset$Years_bl
+  MCItoADorderbytimepoint <- rbind(MCItoADorderbytimepoint,TimePointsMCISubset)
+  
+}
+
+controlMCIToADset <- MCItoADorderbytimepoint[is.na(MCItoADorderbytimepoint$TimeToEvent),]
+controlMCIToADset <- subset(controlMCIToADset,TimeToLastVisit > 3)
+hist(controlMCIToADset$TimeToLastVisit)
+controlMCIToADset$TimeToEvent <- controlMCIToADset$TimeToLastVisit
+caseMCIToADset <- MCItoADorderbytimepoint[!is.na(MCItoADorderbytimepoint$TimeToEvent),]
+caseMCIToADset <- subset(caseMCIToADset,TimeToEvent>0)
+hist(caseMCIToADset$TimeToEvent)
+
+
+```
+## Modeling the MCI to AD Conversion
+```{r}
+controlMCIToADset$class <- 0
+caseMCIToADset$class <- 1
+MCI_to_AD_set <- rbind(controlMCIToADset,caseMCIToADset)
+
+MCI_to_AD_set$TimeToLastVisit <- NULL
+MCI_to_AD_set$TimeToEvent <- NULL
+
+MCI_to_AD_ModeSet <- MCI_to_AD_set[,-c(1:22)]
+
+MCI_to_AD_ModeSet$AGE <- MCI_to_AD_set$AGE
+MCI_to_AD_ModeSet$PTGENDER <- MCI_to_AD_set$PTGENDER
+table(MCI_to_AD_ModeSet$class)
+
+MCI_TO_AD_Model <- BSWiMS.model(class ~ 1,MCI_to_AD_ModeSet,NumberofRepeats = 3)
+
+sm <- summary(MCI_TO_AD_Model)
+sm$coefficients
+```
+## Cross Validation
+
+Obteniendo Particiones basados en Visita
+
+```{r}
+table(MCI_to_AD_set$VISCODE)
+MCI_to_AD_ModeSetbl <- subset(MCI_to_AD_ModeSet,MCI_to_AD_set$VISCODE=="bl")
+MCI_to_AD_ModeSetm06 <- subset(MCI_to_AD_ModeSet,MCI_to_AD_set$VISCODE=="m06")
+MCI_to_AD_ModeSetm12 <- subset(MCI_to_AD_ModeSet,MCI_to_AD_set$VISCODE=="m12")
+MCI_to_AD_ModeSetm18 <- subset(MCI_to_AD_ModeSet,MCI_to_AD_set$VISCODE=="m18")
+
+```
+
+
+```{r}
+
+
+table(MCI_to_AD_ModeSetm12$class)
+
+MCIADBSWIMScv <- randomCV(MCI_to_AD_ModeSetm12,
+                        "class",
+                        fittingFunction=BSWiMS.model,
+                        trainFraction = 0.7,
+                        repetitions = 30,
+                        NumberofRepeats = 1)
+
+MCIADSVMcv <- randomCV(fittingFunction=e1071::svm,
+                        ,trainSampleSets = MCIADBSWIMScv$trainSamplesSets,
+                       featureSelectionFunction = mRMR.classic_FRESA,
+                       asFactor=TRUE,
+                       probability = TRUE)
+
+
+
+```
+```{r}
+cStats <- predictionStats_binary(MCIADBSWIMScv$medianTest,plotname = "BSWiMS Baseline MCI to AD")
+cStats <- predictionStats_binary(MCIADSVMcv$medianTest,plotname = "SVM Baseline MCI to AD")
+
+```
+```{r}
+
+```
+

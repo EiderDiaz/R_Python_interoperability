@@ -1,0 +1,230 @@
+---
+title: "TADPOLE Data Preprocessing"
+output: html_notebook
+---
+
+# Tadpole Data Processing
+
+Here we will remove columns with many NA
+All volumes will be transformed by the cubic root
+All areas will be transformed by the square root
+Left and right features will be described by the mean and the absolute differences
+
+```{r}
+library("FRESA.CAD")
+
+```
+
+
+## Data loading
+
+```{r}
+TADPOLE_D1_D2_Dict <- read.csv("C:/Users/jtame/Dropbox (Personal)/Documents/FRESACAD/TADPOLE/TADPOLE/TADPOLE_D1_D2_Dict.csv", na.strings=c("NA",-4,"-4.0",""," "))
+
+TADPOLE_D1_D2 <- read.csv("C:/Users/jtame/Dropbox (Personal)/Documents/FRESACAD/TADPOLE/TADPOLE/TADPOLE_D1_D2.csv", na.strings=c("NA",-4,"-4.0",""," "))
+
+
+
+TADPOLE_D3 <- read.csv("C:/Users/jtame/Dropbox (Personal)/Documents/FRESACAD/TADPOLE/TADPOLE/TADPOLE_D3.csv", na.strings=c("NA",-4,"-4.0",""," "))
+
+
+```
+
+## Basic Patient Data 
+
+```{r}
+
+
+SetIDSColumns <- c("PTID","D1","D2","SITE","COLPROT","ORIGPROT")
+
+DatesColumns <- c("VISCODE","EXAMDATE_bl","EXAMDATE","Years_bl","Month_bl","Month","M")
+
+Diagnosis <- c("DX","DX_bl","DXCHANGE")
+
+BasicColumns <- c("AGE","PTGENDER","PTEDUCAT","PTETHCAT","PTRACCAT","PTMARRY")
+
+QuestionsColumnsSet1 <- c("CDRSB","ADAS11","ADAS13","MMSE","RAVLT_learning","RAVLT_immediate","FAQ","MOCA","EcogPtMem","EcogPtLang","EcogPtVisspat","EcogPtPlan","EcogPtOrgan","EcogPtDivatt","EcogPtTotal","EcogSPMem","EcogSPLang","EcogSPVisspat","EcogSPPlan","EcogSPOrgan","EcogSPDivatt","EcogSPTotal")
+
+QuestionsColumnsSet2 <- c("CDRSB_bl","ADAS11_bl","ADAS13_bl","MMSE_bl","RAVLT_learning_bl","RAVLT_immediate_bl","FAQ_bl","MOCA_bl","EcogPtMem_bl","EcogPtLang_bl","EcogPtVisspat_bl","EcogPtPlan_bl","EcogPtOrgan_bl","EcogPtDivatt_bl","EcogPtTotal_bl","EcogSPMem_bl","EcogSPLang_bl","EcogSPVisspat_bl","EcogSPPlan_bl","EcogSPOrgan_bl","EcogSPDivatt_bl","EcogSPTotal_bl")
+
+BaseFeaturesColumnsData <- c("APOE4","FDG","PIB","AV45","Ventricles","Hippocampus","WholeBrain","Entorhinal","Fusiform","MidTemp","ICV","Ventricles_bl","Hippocampus_bl","WholeBrain_bl","Entorhinal_bl","Fusiform_bl","MidTemp_bl","ICV_bl","FDG_bl","PIB_bl","AV45_bl","ABETA_UPENNBIOMK9_04_19_17","TAU_UPENNBIOMK9_04_19_17","PTAU_UPENNBIOMK9_04_19_17")
+
+```
+
+## Get the ID of volumetric data
+
+```{r}
+
+volumeCOlumns <- subset(TADPOLE_D1_D2_Dict,UNITS=="mm3")$FLDNAME
+volumeCOlumns <- volumeCOlumns[order(TADPOLE_D1_D2_Dict[TADPOLE_D1_D2_Dict$FLDNAME %in% volumeCOlumns,"TEXT"])]
+
+AreaCOlumns <- subset(TADPOLE_D1_D2_Dict,UNITS=="mm2")$FLDNAME
+AreaCOlumns <- AreaCOlumns[order(TADPOLE_D1_D2_Dict[TADPOLE_D1_D2_Dict$FLDNAME %in% AreaCOlumns,"TEXT"])]
+
+ThicknessCOlumns <- subset(TADPOLE_D1_D2_Dict,UNITS=="mm")$FLDNAME
+ThicknessCOlumns <- ThicknessCOlumns[order(TADPOLE_D1_D2_Dict[TADPOLE_D1_D2_Dict$FLDNAME %in% ThicknessCOlumns,"TEXT"])]
+
+Rightlocations <- TADPOLE_D1_D2_Dict[regexpr('Right', TADPOLE_D1_D2_Dict$TEXT) > 0,"FLDNAME"]
+Leftlocations <- TADPOLE_D1_D2_Dict[regexpr('Left', TADPOLE_D1_D2_Dict$TEXT) > 0,"FLDNAME"]
+
+VolumeRight <- volumeCOlumns[volumeCOlumns %in% Rightlocations]
+VolumeLeft <- volumeCOlumns[volumeCOlumns %in% Leftlocations]
+
+AreaRight <- AreaCOlumns[AreaCOlumns %in% Rightlocations]
+AreaLeft <- AreaCOlumns[AreaCOlumns %in% Leftlocations]
+
+ThicknessRight <- ThicknessCOlumns[ThicknessCOlumns %in% Rightlocations]
+ThicknessLeft <- ThicknessCOlumns[ThicknessCOlumns %in% Leftlocations]
+
+otherVolumes <- volumeCOlumns[!(volumeCOlumns %in% c(Rightlocations,Leftlocations))]
+
+print(TADPOLE_D1_D2_Dict[TADPOLE_D1_D2_Dict$FLDNAME %in% ThicknessRight[1:5],"TEXT"])
+print(TADPOLE_D1_D2_Dict[TADPOLE_D1_D2_Dict$FLDNAME %in% ThicknessLeft[1:5],"TEXT"])
+
+
+```
+## Data Transfomrations
+
+
+```{r}
+
+TADPOLE_D1_D2_Transformed <- TADPOLE_D1_D2[,c(SetIDSColumns,DatesColumns,Diagnosis,BasicColumns,QuestionsColumnsSet1,QuestionsColumnsSet2,BaseFeaturesColumnsData,otherVolumes,VolumeRight,VolumeLeft,AreaRight,AreaLeft,ThicknessRight,ThicknessLeft)]
+
+TADPOLE_D1_D2_Transformed[,23:ncol(TADPOLE_D1_D2_Transformed)] <- sapply(TADPOLE_D1_D2_Transformed[,23:ncol(TADPOLE_D1_D2_Transformed)],as.numeric)
+
+
+
+TADPOLE_D1_D2_Transformed[,otherVolumes] <- (TADPOLE_D1_D2_Transformed[,otherVolumes])^(1/3)
+TADPOLE_D1_D2_Transformed[,VolumeRight] <- (TADPOLE_D1_D2_Transformed[,VolumeRight])^(1/3)
+TADPOLE_D1_D2_Transformed[,VolumeLeft] <- (TADPOLE_D1_D2_Transformed[,VolumeLeft])^(1/3)
+TADPOLE_D1_D2_Transformed[,AreaRight] <- (TADPOLE_D1_D2_Transformed[,AreaRight])^1/2
+TADPOLE_D1_D2_Transformed[,AreaLeft] <- (TADPOLE_D1_D2_Transformed[,AreaLeft])^1/2
+
+
+ICV <- TADPOLE_D1_D2$ICV^(1/3)
+
+TADPOLE_D1_D2_Transformed[,otherVolumes] <- (TADPOLE_D1_D2_Transformed[,otherVolumes])/ICV
+TADPOLE_D1_D2_Transformed[,VolumeRight] <- (TADPOLE_D1_D2_Transformed[,VolumeRight])/ICV
+TADPOLE_D1_D2_Transformed[,VolumeLeft] <- (TADPOLE_D1_D2_Transformed[,VolumeLeft])/ICV
+TADPOLE_D1_D2_Transformed[,AreaRight] <- (TADPOLE_D1_D2_Transformed[,AreaRight])/ICV
+TADPOLE_D1_D2_Transformed[,AreaLeft] <- (TADPOLE_D1_D2_Transformed[,AreaLeft])/ICV
+TADPOLE_D1_D2_Transformed[,ThicknessRight] <- (TADPOLE_D1_D2_Transformed[,ThicknessRight])/ICV
+TADPOLE_D1_D2_Transformed[,ThicknessLeft] <- (TADPOLE_D1_D2_Transformed[,ThicknessLeft])/ICV
+
+
+MeanVolume <- (TADPOLE_D1_D2_Transformed[,VolumeRight] + TADPOLE_D1_D2_Transformed[,VolumeLeft])/2
+colnames(MeanVolume) <- paste("Mean",colnames(MeanVolume),sep="_")
+DifVolume <- abs(TADPOLE_D1_D2_Transformed[,VolumeRight] - TADPOLE_D1_D2_Transformed[,VolumeLeft])
+colnames(DifVolume) <- paste("Dif",colnames(DifVolume),sep="_")
+TADPOLE_D1_D2_Transformed[,VolumeRight] <-NULL
+TADPOLE_D1_D2_Transformed[,VolumeLeft] <- NULL
+
+MeanArea <- (TADPOLE_D1_D2_Transformed[,AreaRight] + TADPOLE_D1_D2_Transformed[,AreaLeft])/2
+colnames(MeanArea) <- paste("Mean",colnames(MeanArea),sep="_")
+DifArea <- abs(TADPOLE_D1_D2_Transformed[,AreaRight] - TADPOLE_D1_D2_Transformed[,AreaLeft])
+colnames(DifArea) <- paste("Dif",colnames(DifArea),sep="_")
+TADPOLE_D1_D2_Transformed[,AreaRight] <- NULL
+TADPOLE_D1_D2_Transformed[,AreaLeft] <- NULL
+
+MeanThickness <- (TADPOLE_D1_D2_Transformed[,ThicknessRight] + TADPOLE_D1_D2_Transformed[,ThicknessLeft])/2
+colnames(MeanThickness) <- paste("Mean",colnames(MeanThickness),sep="_")
+DifThickness <- abs(TADPOLE_D1_D2_Transformed[,ThicknessRight] - TADPOLE_D1_D2_Transformed[,ThicknessLeft])
+colnames(DifThickness) <- paste("Dif",colnames(DifThickness),sep="_")
+TADPOLE_D1_D2_Transformed[,ThicknessRight] <- NULL
+TADPOLE_D1_D2_Transformed[,ThicknessLeft] <- NULL
+
+TADPOLE_D1_D2_Transformed <- cbind(TADPOLE_D1_D2_Transformed,MeanVolume,DifVolume,MeanArea,DifArea,MeanThickness,DifThickness)
+
+TADPOLE_D1_D2_Transformed$MeanVolumes <- apply(MeanVolume,1,mean,na.rm=TRUE)
+TADPOLE_D1_D2_Transformed$StdVolumes <- apply(MeanVolume,1,sd,na.rm=TRUE)
+TADPOLE_D1_D2_Transformed$COVOlumens <- TADPOLE_D1_D2_Transformed$StdVolumes/TADPOLE_D1_D2_Transformed$MeanVolumes
+
+TADPOLE_D1_D2_Transformed$MeanArea <- apply(MeanArea,1,mean,na.rm=TRUE)
+TADPOLE_D1_D2_Transformed$StdArea <- apply(MeanArea,1,sd,na.rm=TRUE)
+TADPOLE_D1_D2_Transformed$COArea <- TADPOLE_D1_D2_Transformed$StdArea/TADPOLE_D1_D2_Transformed$MeanArea
+
+TADPOLE_D1_D2_Transformed$MeanThickness <- apply(MeanThickness,1,mean,na.rm=TRUE)
+TADPOLE_D1_D2_Transformed$StdThickness <- apply(MeanThickness,1,sd,na.rm=TRUE)
+TADPOLE_D1_D2_Transformed$COMeanThickness <- TADPOLE_D1_D2_Transformed$StdThickness/TADPOLE_D1_D2_Transformed$MeanThickness
+
+
+```
+
+### Remove columns and subjects with more than 50% of missing data
+
+```{r}
+checkmissing <- 0.5*nrow(TADPOLE_D1_D2_Transformed)
+table(TADPOLE_D1_D2_Transformed$DX)
+sum(is.na(TADPOLE_D1_D2_Transformed$DX))
+
+missingData50 <- apply(is.na(TADPOLE_D1_D2_Transformed),2,sum) > checkmissing
+TADPOLE_D1_D2_Transformed_red <- TADPOLE_D1_D2_Transformed[,!missingData50]
+
+checkColmissing <- 0.5*ncol(TADPOLE_D1_D2_Transformed_red)
+mssingRawData50 <- apply(is.na(TADPOLE_D1_D2_Transformed_red),1,sum) > checkColmissing
+
+TADPOLE_Complete_Transformed <- TADPOLE_D1_D2_Transformed_red[complete.cases(TADPOLE_D1_D2_Transformed_red),]
+
+
+TADPOLE_D1_D2_Transformed_red <- TADPOLE_D1_D2_Transformed_red[!mssingRawData50,]
+
+TADPOLE_Complete_Transformed <- TADPOLE_D1_D2_Transformed_red[complete.cases(TADPOLE_D1_D2_Transformed_red),]
+
+```
+
+### Imputing Missing Data
+
+```{r}
+
+TADPOLE_D1_D2_Transformed_red$nICV <- TADPOLE_D1_D2_Transformed_red$ICV^(1/3)
+TadpoleOnlyFeatures <- TADPOLE_D1_D2_Transformed_red[,-c(1:22)]
+Tadpole_Imputed <- cbind(TADPOLE_D1_D2_Transformed_red[,c(1:22)],nearestNeighborImpute(TadpoleOnlyFeatures))
+
+fnames <- colnames(Tadpole_Imputed)
+fnames <- str_replace_all(fnames," ","_")
+fnames <- str_replace_all(fnames,"/","_")
+fnames <- str_replace_all(fnames,":","_")
+fnames <- str_replace_all(fnames,"//.","_")
+colnames(Tadpole_Imputed) <- fnames
+
+
+```
+
+```{r}
+save(Tadpole_Imputed,file="Tadpole_Imputed.RDATA")
+```
+
+
+### Adjust for Age Gender and ICV
+
+```{r}
+load(file="Tadpole_Imputed.RDATA")
+table(Tadpole_Imputed$DX)
+table(Tadpole_Imputed$PTGENDER)
+Tadpole_Imputed$PTGENDER <- 1*(Tadpole_Imputed$PTGENDER=="Male")
+table(Tadpole_Imputed$PTGENDER)
+
+Tadpole_Imputed$AGE <- Tadpole_Imputed$AGE + Tadpole_Imputed$Years_bl
+
+cognitiveNormal <- subset(Tadpole_Imputed,DX=="NL" & VISCODE=="bl")
+
+predictors <- colnames(cognitiveNormal)[-c(1:22)]
+predictors <- cbind(predictors,predictors)
+
+allAdusted <- featureAdjustment(predictors, baseModel="1+AGE+nICV",data=Tadpole_Imputed,referenceframe=cognitiveNormal,strata="PTGENDER", type = "LM", pvalue = 0.001)
+
+
+save(allAdusted,file="allAdusted.RDATA")
+
+
+allAdustedZrank <- rankInverseNormalDataFrame(predictors, 
+                                              allAdusted, 
+                                              subset(allAdusted,DX=="NL" & VISCODE=="bl"),
+                                              strata="PTGENDER")
+
+save(allAdustedZrank,file="allAdustedZrank.RDATA")
+
+```
+
+
+
