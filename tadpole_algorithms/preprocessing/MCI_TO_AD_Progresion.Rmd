@@ -84,14 +84,10 @@ MCI_to_AD_ModeSet$AGE <- MCI_to_AD_set$AGE
 MCI_to_AD_ModeSet$PTGENDER <- MCI_to_AD_set$PTGENDER
 table(MCI_to_AD_ModeSet$class)
 
-MCI_TO_AD_Model <- BSWiMS.model(class ~ 1,MCI_to_AD_ModeSet,NumberofRepeats = 3)
-
-sm <- summary(MCI_TO_AD_Model)
-sm$coefficients
 ```
 ## Cross Validation
 
-Obteniendo Particiones basados en Visita
+Obteniendo Particiones basados en Visit
 
 ```{r}
 table(MCI_to_AD_set$VISCODE)
@@ -100,36 +96,87 @@ MCI_to_AD_ModeSetm06 <- subset(MCI_to_AD_ModeSet,MCI_to_AD_set$VISCODE=="m06")
 MCI_to_AD_ModeSetm12 <- subset(MCI_to_AD_ModeSet,MCI_to_AD_set$VISCODE=="m12")
 MCI_to_AD_ModeSetm18 <- subset(MCI_to_AD_ModeSet,MCI_to_AD_set$VISCODE=="m18")
 
+
+MCI_TO_AD_Model_1 <- BSWiMS.model(class ~ 1,MCI_to_AD_ModeSetbl,NumberofRepeats = 3)
+MCI_TO_AD_Model_2 <- BSWiMS.model(class ~ 1,MCI_to_AD_ModeSetm06,NumberofRepeats = 3)
+MCI_TO_AD_Model_3 <- BSWiMS.model(class ~ 1,MCI_to_AD_ModeSetm12,NumberofRepeats = 3)
+MCI_TO_AD_Model_4 <- BSWiMS.model(class ~ 1,MCI_to_AD_ModeSetm18,NumberofRepeats = 3)
+
+sm <- summary(MCI_TO_AD_Model_1)
+sm$coefficients
+
+
 ```
 
 
 ```{r}
 
 
-table(MCI_to_AD_ModeSetm12$class)
+table(MCI_to_AD_ModeSetbl$class)
 
-MCIADBSWIMScv <- randomCV(MCI_to_AD_ModeSetm12,
+MCIADSVMcv <- randomCV(MCI_to_AD_ModeSetm12,
                         "class",
-                        fittingFunction=BSWiMS.model,
+                        fittingFunction=e1071::svm,
                         trainFraction = 0.7,
                         repetitions = 30,
-                        NumberofRepeats = 1)
-
-MCIADSVMcv <- randomCV(fittingFunction=e1071::svm,
-                        ,trainSampleSets = MCIADBSWIMScv$trainSamplesSets,
                        featureSelectionFunction = mRMR.classic_FRESA,
                        asFactor=TRUE,
                        probability = TRUE)
 
+MCIADSVM_ADAS <- randomCV(MCI_to_AD_ModeSetm12,
+                        "ADAS13",
+                        fittingFunction=e1071::svm,
+                        trainFraction = 0.7,
+                        repetitions = 30,
+                       featureSelectionFunction = mRMR.classic_FRESA)
+
+#MCIADBSWIMScv <- randomCV(MCI_to_AD_ModeSetm12,
+#                        "class",
+#                        fittingFunction=BSWiMS.model,
+#                        trainFraction = 0.7,
+#                        repetitions = 30,
+#                        NumberofRepeats = 1)
+
+#MCIADSVMcv <- randomCV(fittingFunction=e1071::svm,
+#                        ,trainSampleSets = MCIADBSWIMScv$trainSamplesSets,
+#                       featureSelectionFunction = mRMR.classic_FRESA,
+#                       asFactor=TRUE,
+#                       probability = TRUE)
+
 
 
 ```
 ```{r}
-cStats <- predictionStats_binary(MCIADBSWIMScv$medianTest,plotname = "BSWiMS Baseline MCI to AD")
+#cStats <- predictionStats_binary(MCIADBSWIMScv$medianTest,plotname = "BSWiMS Baseline MCI to AD")
 cStats <- predictionStats_binary(MCIADSVMcv$medianTest,plotname = "SVM Baseline MCI to AD")
+cStats <- predictionStats_regression(MCIADSVM_ADAS$medianTest,plotname = "SVM Baseline ADAS13")
 
 ```
+
+### Tiempo a Evento
 ```{r}
+MCI_to_AD_Time <- caseMCIToADset
+MCI_to_AD_Time$class <- NULL
+MCI_to_AD_Time$TimeToLastVisit <- NULL
+MCI_to_AD_Timeset <- MCI_to_AD_Time[,-c(1:22)]
+
+MCI_to_AD_Timesetbl <- subset(MCI_to_AD_Timeset,MCI_to_AD_Time$VISCODE=="bl")
+
+
+MCI_to_AD_Timeset$AGE <- MCI_to_AD_Time$AGE
+MCI_to_AD_Timeset$PTGENDER <- MCI_to_AD_Time$PTGENDER
+
+modeltimetoEvent <- BSWiMS.model(TimeToEvent ~ 1,MCI_to_AD_Timesetbl,NumberofRepeats = 3)
+sm <- summary(modeltimetoEvent)
+sm$coefficients
+
+```
+
+
+#Predict 
+```{r}
+pr <- predict(modeltimetoEvent,MCI_to_AD_Timeset)
+cStats <- predictionStats_regression(cbind(MCI_to_AD_Timeset$TimeToEvent,pr),plotname = "Time")
 
 ```
 
