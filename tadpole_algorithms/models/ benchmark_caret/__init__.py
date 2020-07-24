@@ -15,13 +15,9 @@ import sys
 
 from tadpole_algorithms.models.tadpole_model import TadpoleModel
 
-import datetime as dt
-from dateutil.relativedelta import relativedelta
 
 import logging
 
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
 
 logger = logging.getLogger(__name__)
 #this import is for use R code into Python
@@ -30,18 +26,18 @@ from rpy2.robjects.packages import importr
 import rpy2.robjects.packages as rpackages
 from rpy2.robjects.vectors import StrVector
 
-class BenchmarkSVM_R(TadpoleModel):
+class BenchmarkCaret(TadpoleModel):
     
 
     
-    def tadpole_tidyng(self):
+    def caret_gmb_modelfitting_R(self):
 
-        tadpole_tidying_script = ""
-        with open('R_scripts/tadpole_tidying.txt', 'r') as file:
-        #this file contains the BSWIMS function 
-            tadpole_tidying_script = file.read()
-        tidy_dataframe = robjects.r(tadpole_tidying_script)
-        return tidy_dataframe
+        caret_gmb_modelfitting = ""
+        with open('./R_scripts/caret_gmb', 'r') as file:
+        #this file contains magic R scrpits 
+            caret_gmb_modelfitting = file.read()
+        gmb_model = robjects.r(caret_gmb_modelfitting)
+        return gmb_model
 
     def preprocess_df_R(self,dataframe):
         #this function parse a python dataframe to a R dataframe
@@ -75,16 +71,9 @@ class BenchmarkSVM_R(TadpoleModel):
         model = r_svm(formula=formula_R, data=dataframe, kernel = "linear", cost = 10, scale = 0)
         return model
 
-#############caret
-    def caret_gmb_modelfitting_R(self):
 
-            caret_gmb_modelfitting = ""
-            with open('R_scripts/caret_gmb.txt', 'r') as file:
-            #this file contains magic R scrpits 
-                caret_gmb_modelfitting = file.read()
-            gmb_model = robjects.r(caret_gmb_modelfitting)
-            return gmb_model
 
+    
 
 
 
@@ -208,5 +197,3 @@ class BenchmarkSVM_R(TadpoleModel):
 
         return new_df
     
-
-
