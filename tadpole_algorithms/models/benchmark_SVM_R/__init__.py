@@ -104,6 +104,8 @@ class BenchmarkSVM_R(TadpoleModel):
             tamez_tidying = file.read()
             tamez_tidying_function = robjects.r(tamez_tidying)
             tidy_df = tamez_tidying_function(path_d1,path_dict,path_d3)
+            #save_Robject= robjects.r("save")
+            #save_Robject(tidy_df,file="tidy_df.RDATA")
             return tidy_df
         
 
