@@ -138,5 +138,4 @@ clean_tadpole <- function(path_tadpole,path_varnames){
 #  
   }
   
-  clean_tadpole("/Users/Eider/Documents/GitHub/tadpole-data-and-tidying-scripts/TADPOLE_D1_D2.csv",
-   "/Users/Eider/Documents/GitHub/tadpole-data-and-tidying-scripts/varnames.csv")
+  clean_tadpole("tadpole_path","varnames_path")

@@ -34,14 +34,18 @@ class BenchmarkSVM_R(TadpoleModel):
     
 
     
-    def tadpole_tidyng(self):
-
+    def tadpole_tidyng(self,path_tadpole,path_varnames):
         tadpole_tidying_script = ""
         with open('R_scripts/tadpole_tidying.txt', 'r') as file:
         #this file contains the BSWIMS function 
             tadpole_tidying_script = file.read()
-        tidy_dataframe = robjects.r(tadpole_tidying_script)
+        #replace the values on the script with the actual atributes needed    
+        tadpole_tidying_script = tadpole_tidying_script.replace("tadpole_path",path_tadpole)
+        tadpole_tidying_script = tadpole_tidying_script.replace("varnames_path",path_varnames)
+        tidy_dataframe = robjects.r(tadpole_tidying_script)  
         return tidy_dataframe
+
+
 
     def preprocess_df_R(self,dataframe):
         #this function parse a python dataframe to a R dataframe
@@ -49,7 +53,6 @@ class BenchmarkSVM_R(TadpoleModel):
         for colname in dataframe.columns:
             # What happens if we pass the wrong type?
             feature_dict[colname] = robjects.FloatVector(dataframe[colname])
-        
         dataframe_R = robjects.DataFrame(feature_dict)
         return dataframe_R
         
@@ -78,47 +81,46 @@ class BenchmarkSVM_R(TadpoleModel):
 #############caret
     def caret_gmb_modelfitting_R(self):
 
-            caret_gmb_modelfitting = ""
+
+            caret_modelfitting = ""
             with open('R_scripts/caret_gmb.txt', 'r') as file:
             #this file contains magic R scrpits 
-                caret_gmb_modelfitting = file.read()
-            gmb_model = robjects.r(caret_gmb_modelfitting)
+                caret_modelfitting = file.read()
+            caret_modelfitting = caret_modelfitting.replace("tadpole_path",path_tadpole)
+            tadpole_tidying_script = tadpole_tidying_script.replace("varnames_path",path_varnames)
+            caret_model = robjects.r(caret_gmb_modelfitting)
             return gmb_model
 
 
 
 
 #end R functions
-    def preprocess(self, train_df):
-        logger.info("Pre-processing")
-        train_df = train_df.copy()
-        if 'Diagnosis' not in train_df.columns:
-            train_df = train_df.replace({'DXCHANGE': {4: 2, 5: 3, 6: 3, 7: 1, 8: 2, 9: 1}})
-            train_df = train_df.rename(columns={"DXCHANGE": "Diagnosis"})
+    def preprocess(self, path_d1="data/TADPOLE_D1_D2.csv",
+    path_dict="data/TADPOLE_D1_D2_Dict.csv",
+    path_d3="data/TADPOLE_D3.csv"):
+        tamez_tidying = ""
+        with open('R_scripts/tamez_tadpole_tidying.txt', 'r') as file:
+            #this file contains magic R scrpits 
+            tamez_tidying = file.read()
+            tamez_tidying_function = robjects.r(tamez_tidying)
+            tidy_df = tamez_tidying_function(path_d1,path_dict,path_d3)
+            return tidy_df
+        
 
-        # Sort the dataframe based on age for each subject
-        if 'Years_bl' in train_df.columns:
-            train_df = train_df.sort_values(by=['RID', 'Years_bl'])
+    def train(self,theoutcome, model):
+        train_df_R = self.preprocess()
+        caret_modelfitting = ""
+        with open('R_scripts/caret_gmb.txt', 'r') as file:
+            #this file contains magic R scrpits 
+            caret_modelfitting = file.read()
+            caret_model_function = robjects.r(caret_modelfitting)
+            caret_model = caret_model_function(theoutcome,model,train_df_R)
+            return caret_model
 
-        # Ventricles_ICV = Ventricles/ICV_bl. So make sure ICV_bl is not zero to avoid division by zero
-        icv_bl_median = train_df['ICV_bl'].median()
-        train_df.loc[train_df['ICV_bl'] == 0, 'ICV_bl'] = icv_bl_median
 
-        if 'Ventricles_ICV' not in train_df.columns:
-            train_df["Ventricles_ICV"] = train_df["Ventricles"].values / train_df["ICV_bl"].values
+        
 
-        # Select features
-        train_df = train_df[
-            ["RID", "Diagnosis", "ADAS13", "Ventricles_ICV", "Ventricles", "ICV_bl"]
-        ]
-
-        # Force values to numeric
-        train_df = train_df.astype("float64", errors='ignore')
-
-        return train_df
-
-    def train(self, train_df):
-        logger.info("No training required")
+       
 
     def predict(self, test_df):
         logger.info("Predicting")

@@ -1,9 +1,7 @@
 
+
 library(caret)
-
-
-  tadpole_d1_d2_tidy <- read.delim("/Users/Eider/Documents/GitHub/tadpole-data-and-tidying-scripts/tadpole_d1_d2_tidy.csv",sep=",")
-  tadpole_d1_d2_tidy[1] <- NULL
+caret_fitting <- function(theoutcome,model,train_df){
 
   #create a tunning grid
   tunningctrl <- trainControl(
@@ -12,10 +10,15 @@ library(caret)
     repeats = 3
   )  
  
-  gbm_fit <- train(as.factor(status) ~ .,
-                   tadpole_d1_d2_tidy, 
-                   method = "gbm",  
+  caret_fit <- train(as.factor(theoutcome) ~ .,
+                   train_df, 
+                   method = model,  
                    trControl = tunningctrl,
                    preProc = c("center", "scale"),
                    verbose = FALSE)
-  gbm_fit
+
+}
+
+caret_fitting
+
+
