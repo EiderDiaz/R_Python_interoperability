@@ -179,4 +179,6 @@ tamez_tadpole_tidying <- function(path_d1,path_dict,path_d3){
                                                 strata="PTGENDER")
   
   return(allAdustedZrank)
+
+  
   }

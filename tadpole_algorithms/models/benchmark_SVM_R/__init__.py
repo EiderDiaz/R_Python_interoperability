@@ -29,11 +29,32 @@ from rpy2 import robjects
 from rpy2.robjects.packages import importr
 import rpy2.robjects.packages as rpackages
 from rpy2.robjects.vectors import StrVector
+#to transform r to python df
+from rpy2.robjects import pandas2ri
+from rpy2.robjects.conversion import localconverter
 
 class BenchmarkSVM_R(TadpoleModel):
-    
+
+    def R_df_to_python_df(self,R_df,csvname=""):
+        #func to convert a R df into python and if a csvname is specified can be saved
+        pandas2ri.activate()
+        d_from_r_df = pd.DataFrame()
+        with localconverter(robjects.default_converter + pandas2ri.converter):
+            pd_from_r_df = robjects.conversion.rpy2py(tidy_df)
+        if csvname :
+            pd_from_r_df.to_csv(csvname)
+        return pd_from_r_df
+
+    def Python_df_to_R_df(self,Python_df):
+        #func to convert a Python df into R DF
+        pandas2ri.activate()
+        r_from_pd_df = robjects.DataFrame({})
+        with localconverter(robjects.default_converter + pandas2ri.converter):
+            r_from_pd_df = robjects.conversion.py2rpy(Python_df)
+        return r_from_pd_df
 
     
+
     def tadpole_tidyng(self,path_tadpole,path_varnames):
         tadpole_tidying_script = ""
         with open('R_scripts/tadpole_tidying.txt', 'r') as file:
@@ -107,18 +128,32 @@ class BenchmarkSVM_R(TadpoleModel):
             #save_Robject= robjects.r("save")
             #save_Robject(tidy_df,file="tidy_df.RDATA")
             return tidy_df
-        
+    def train(self, train_df):
+        return super().train(train_df)
 
-    def train(self,theoutcome, model):
-        train_df_R = self.preprocess()
+    def train_caret_classifier(self,theoutcome, model,df=""):
+        train_df_R = df
+        if not df:
+            train_df_R = self.preprocess()     
         caret_modelfitting = ""
-        with open('R_scripts/caret_gmb.txt', 'r') as file:
+        with open('R_scripts/caret_classifier.txt', 'r') as file:
+            #this file contains magic R scrpits 
+            caret_modelfitting = file.read()
+            caret_model_function = robjects.r(caret_modelfitting)
+            caret_model = caret_model_function(theoutcome=theoutcome,model=model,train_df=train_df_R)
+            return caret_model
+
+    def train_caret_regression(self,theoutcome, model,df=""):
+        train_df_R = df
+        if not df:
+            train_df_R = self.preprocess()     
+        caret_modelfitting = ""
+        with open('R_scripts/caret_regression.txt', 'r') as file:
             #this file contains magic R scrpits 
             caret_modelfitting = file.read()
             caret_model_function = robjects.r(caret_modelfitting)
             caret_model = caret_model_function(theoutcome,model,train_df_R)
             return caret_model
-
 
         
 
