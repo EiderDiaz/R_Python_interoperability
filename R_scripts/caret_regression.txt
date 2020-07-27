@@ -1,0 +1,24 @@
+
+
+library(caret)
+caret_fitting <- function(theoutcome,model,train_df){
+
+  #create a tunning grid
+  tunningctrl <- trainControl(
+    method = "repeatedcv", 
+    number = 5,
+    repeats = 3
+  )  
+ 
+  caret_fit <- train(theoutcome ~ .,
+                   train_df, 
+                   method = model,  
+                   trControl = tunningctrl,
+                   preProc = c("center", "scale"),
+                   verbose = FALSE)
+
+}
+
+caret_fitting
+
+
