@@ -11,11 +11,12 @@
 
 TrainTadpoleClassModels <- function(AdjustedFrame,predictors,months=NULL,numberOfRandomSamples=5,MLMethod=BSWiMS.model,asFactor=FALSE,...)
 {
-  
+  AdjustedFrame$RID <- as.character(AdjustedFrame$RID)
   library("FRESA.CAD")
   if (is.null(months))
   {
-    months <- names(table(AdjustedFrame$M))
+    months <- as.numeric(names(table(AdjustedFrame$M)))
+    print(months)
   }
   cpredictors <- predictors
   
@@ -56,14 +57,14 @@ TrainTadpoleClassModels <- function(AdjustedFrame,predictors,months=NULL,numberO
 
   ## Get All the MCI subjects that progressed
   
-  table(AdjustedFrame$DX)
+  print(table(AdjustedFrame$DX))
   MCISubset <- subset(AdjustedFrame,(DX_bl == "LMCI" | DX_bl == "EMCI") & DX == "MCI")
   
   subsetMCIADConversion <-  as.data.frame(subset(AdjustedFrame,DX == "MCI to Dementia"))
-  pidss <- subsetMCIADConversion$RID
+  pidss <- as.character(subsetMCIADConversion$RID)
   tpids <- table(pidss)
   removeTp <- tpids[pidss] == 1
-  sum(removeTp == FALSE)
+  print(sum(removeTp == FALSE))
   
   subsetMCIADConversion <- subsetMCIADConversion[removeTp,]
   
@@ -81,7 +82,7 @@ TrainTadpoleClassModels <- function(AdjustedFrame,predictors,months=NULL,numberO
   }
   
   controlMCIToADset <- MCItoADorderbytimepoint[is.na(MCItoADorderbytimepoint$TimeToEvent),]
-  controlMCIToADset <- subset(controlMCIToADset,Year_bl_LastVisit > 4)
+  controlMCIToADset <- subset(controlMCIToADset,Year_bl_LastVisit >= 4)
   hist(controlMCIToADset$TimeToLastVisit)
   controlMCIToADset$TimeToEvent <- controlMCIToADset$TimeToLastVisit
   
@@ -98,12 +99,12 @@ TrainTadpoleClassModels <- function(AdjustedFrame,predictors,months=NULL,numberO
   
   MCI_to_AD_TrainSet <- MCI_to_AD_set[MCI_to_AD_set$D1==1,]
   
-  table(MCI_to_AD_TrainSet$class)
+  print(table(MCI_to_AD_TrainSet$class))
   
   
   ## Modeling MCI conversion
   
-  table(MCI_to_AD_TrainSet$VISCODE)
+  print(table(MCI_to_AD_TrainSet$VISCODE))
   
   MCI_to_ADSets <- list();
   MCI_TO_AD_Model <- list();
@@ -120,8 +121,10 @@ TrainTadpoleClassModels <- function(AdjustedFrame,predictors,months=NULL,numberO
     rownames(set1) <- set1$RID
     set1 <- set1[complete.cases(set1),]
     print(nrow(set1))
+    print(table(set1$class))
     MCI_to_ADSets[[n]] <- set1[,c("class",predictors)]
     MCI_TO_AD_Model[[n]] <- MLMethod(class ~ 1,MCI_to_ADSets[[n]],...)
+
     set1 <- subset(set1,class==1)
     print(nrow(set1))
     
@@ -193,6 +196,7 @@ TrainTadpoleClassModels <- function(AdjustedFrame,predictors,months=NULL,numberO
     rownames(set1) <- set1$RID
     set1 <- set1[complete.cases(set1),]
     print(nrow(set1))
+    print(table(set1$class))
     
     NCConvSets[[n]] <- set1[,c("class",predictors)]
     NCConv_Model[[n]] <- MLMethod(class ~ 1,NCConvSets[[n]],...)
@@ -221,7 +225,7 @@ TrainTadpoleClassModels <- function(AdjustedFrame,predictors,months=NULL,numberO
   AllADNI_Model <- list();
   n=1
   
-  for (n in 1:resamplingNumber)
+  for (n in 1:numberOfRandomSamples)
   {
     randomnumber <- sample(1:nrow(AdjustedFrame),nrow(AdjustedFrame))
     AllADNI_RandomSet <- AdjustedFrame[randomnumber,]
@@ -244,7 +248,8 @@ TrainTadpoleClassModels <- function(AdjustedFrame,predictors,months=NULL,numberO
                             MCIToADModels=MCI_TO_AD_Model,
                             MCIToADTimeModel = MCI_TO_AD_TimeModel,
                             NCToMCIModel=NCConv_Model,
-                            NCToMCITimeModel=NL_TO_OTHER_TimeModel
+                            NCToMCITimeModel=NL_TO_OTHER_TimeModel,
+                            predictors = cpredictors
                             )
   
   return (predicitionModels)
