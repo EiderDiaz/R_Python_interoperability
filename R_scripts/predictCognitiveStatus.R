@@ -68,13 +68,34 @@ forecastCognitiveStatus <- function(Models,TestDataFrame)
   Orderbytimepoint <- NULL
   
   
-  crossprediction <- predict(Models$CrossModels[[1]]$oridinalModels,lastTimepointSet)
+  if (is.null(Models$CrossModels[[1]]$oridinalModels))
+  {
+    crossprediction <- predict(Models$CrossModels[[1]],lastTimepointSet)
+  }
+  else
+  {
+    crossprediction <- predict(Models$CrossModels[[1]]$oridinalModels,lastTimepointSet)
+  }
   for (n in 2:length(Models$CrossModels))
   {
-    crossprediction <- crossprediction + predict(Models$CrossModels[[n]]$oridinalModels,lastTimepointSet)
+    if (is.null(Models$CrossModels[[n]]$oridinalModels))
+    {
+      crossprediction <- crossprediction + predict(Models$CrossModels[[n]],lastTimepointSet)
+    }
+    else
+    {
+      crossprediction <- crossprediction + predict(Models$CrossModels[[n]]$oridinalModels,lastTimepointSet)
+    }
   }
-  crossprediction <- as.data.frame(crossprediction[,(ncol(crossprediction)-2):ncol(crossprediction)]/length(Models$CrossModels))
-  rownames(crossprediction) <- lastTimepointSet$RID
+  if (is.null(Models$CrossModels[[1]]$oridinalModels))
+  {
+    crossprediction <- as.integer(crossprediction/length(Models$CrossModels)+0.5)
+  }
+  else
+  {
+    crossprediction <- as.data.frame(crossprediction[,(ncol(crossprediction)-2):ncol(crossprediction)]/length(Models$CrossModels))
+    rownames(crossprediction) <- lastTimepointSet$RID
+  }
   crossprediction <- crossprediction[order(as.numeric(rownames(crossprediction))),]
   crossprediction$pDX <- apply(crossprediction,1,which.max)
   crossprediction$DX <- lastTimepointSet[rownames(crossprediction),"DX"]

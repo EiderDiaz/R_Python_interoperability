@@ -22,12 +22,17 @@ D2TesingSet <- subset(TADPOLE_D1_D2,D2==1)
 
 source('~/GitHub/TADPOLE/dataPreprocessing.R')
 source('~/GitHub/TADPOLE/TADPOLE_Train.R')
+source('~/GitHub/TADPOLE/predictCognitiveStatus.R')
+
 
 
 dataTadpole <- dataTADPOLEPreprocesing(TrainingSet,TADPOLE_D3,TADPOLE_D1_D2_Dict,MinVisit=36,colImputeThreshold=0.25,rowImputeThreshold=0.25)
 
 
 save(dataTadpole,file="D3DataFrames.RDATA")
+load(file="D3DataFrames.RDATA")
+
+D3Testing <- dataTadpole$testingFrame
 
 dataTadpole <- dataTADPOLEPreprocesing(TrainingSet,D2TesingSet,TADPOLE_D1_D2_Dict,MinVisit=36,colImputeThreshold=0.25,rowImputeThreshold=0.25)
 
@@ -41,39 +46,53 @@ CognitiveClassModels <- TrainTadpoleClassModels(dataTadpole$AdjustedTrainFrame,
                         MLMethod=BSWiMS.model,
                         NumberofRepeats = 5)
 
+CognitiveClassModelsSVM <- TrainTadpoleClassModels(dataTadpole$AdjustedTrainFrame,
+                                                predictors=c("AGE","PTGENDER",colnames(dataTadpole$AdjustedTrainFrame)[-c(1:22)]),
+                                                MLMethod=e1071::svm,
+                                                asFactor=TRUE,
+                                                )
+
+
 save(CognitiveClassModels,file="CognitiveClassModels.RDATA")
 
 load(file="CognitiveClassModels.RDATA")
 
 dataTadpole$testingFrame$EXAMDATE <- as.Date(dataTadpole$testingFrame$EXAMDATE)
 
-check <- forecastCognitiveStatus(CognitiveClassModels,dataTadpole$testingFrame)
+predictADNI <- forecastCognitiveStatus(CognitiveClassModelsSVM,dataTadpole$testingFrame)
 
-table(check$crossprediction$DX)
-table(check$lastDX)
-status <- (check$crossprediction$DX == "NL" | check$crossprediction$DX == "MCI to NL") + 
-  2*(check$crossprediction$DX == "Dementia to MCI" | check$crossprediction$DX == "NL to MCI" | check$crossprediction$DX == "MCI") + 
-  3*(check$crossprediction$DX == "MCI to Dementia" | check$crossprediction$DX == "Dementia")
+predictADNI$crossprediction
+
+table(predictADNI$crossprediction$DX)
+table(predictADNI$lastDX)
+status <- (predictADNI$crossprediction$DX == "NL" | predictADNI$crossprediction$DX == "MCI to NL") + 
+  2*(predictADNI$crossprediction$DX == "Dementia to MCI" | predictADNI$crossprediction$DX == "NL to MCI" | predictADNI$crossprediction$DX == "MCI") + 
+  3*(predictADNI$crossprediction$DX == "MCI to Dementia" | predictADNI$crossprediction$DX == "Dementia")
 
 status[is.na(status)] <- 4
 
-statusLO <- (check$lastDX == "NL" | check$lastDX == "MCI to NL") + 
-  2*(check$lastDX == "Dementia to MCI" | check$lastDX == "NL to MCI" | check$lastDX == "MCI") + 
-  3*(check$lastDX == "MCI to Dementia" | check$lastDX == "Dementia")
+statusLO <- (predictADNI$lastKownDX == "NL" | predictADNI$lastKownDX == "MCI to NL") + 
+  2*(predictADNI$lastKownDX == "Dementia to MCI" | predictADNI$lastKownDX == "NL to MCI" | predictADNI$lastKownDX == "MCI") + 
+  3*(predictADNI$lastKownDX == "MCI to Dementia" | predictADNI$lastKownDX == "Dementia")
 
-table(check$crossprediction$pDX,status)
-
-table(check$crossprediction$pDX,statusLO)
 table(status,statusLO)
 
-length(check$crossprediction$pDX)
-length(check$MCITOADprediction)
+predTable <- predictADNI$crossprediction
 
-table(statusLO,check$MCITOADprediction > 0.5)
-table(check$crossprediction$pDX,check$MCITOADprediction > 0.5)
+table(predictADNI$crossprediction$pDX,status)
 
-table(statusLO,check$NCToMCIprediction > 0.5)
-table(check$crossprediction$pDX,check$NCToMCIprediction > 0.5)
+table(predictADNI$crossprediction$pDX,statusLO)
 
-print(nrow(check$crossprediction))
+table(status,statusLO)
+
+length(predictADNI$crossprediction$pDX)
+length(predictADNI$MCITOADprediction)
+
+table(statusLO,predictADNI$MCITOADprediction > 0.5)
+table(predictADNI$crossprediction$pDX,predictADNI$MCITOADprediction > 0.5)
+
+table(statusLO,predictADNI$NCToMCIprediction > 0.5)
+table(predictADNI$crossprediction$pDX,predictADNI$NCToMCIprediction > 0.5)
+
+print(nrow(predictADNI$crossprediction))
 
