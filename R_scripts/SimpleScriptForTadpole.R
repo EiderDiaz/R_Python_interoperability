@@ -33,7 +33,7 @@ dataTadpole <- dataTADPOLEPreprocesing(TrainingSet,D2TesingSet,TADPOLE_D1_D2_Dic
 
 
 save(dataTadpole,file="D2DataFrames.RDATA")
-
+load(file="D2DataFrames.RDATA")
 
 
 CognitiveClassModels <- TrainTadpoleClassModels(dataTadpole$AdjustedTrainFrame,
@@ -43,20 +43,37 @@ CognitiveClassModels <- TrainTadpoleClassModels(dataTadpole$AdjustedTrainFrame,
 
 save(CognitiveClassModels,file="CognitiveClassModels.RDATA")
 
-load(file="D2DataFrames.RDATA")
+load(file="CognitiveClassModels.RDATA")
 
 dataTadpole$testingFrame$EXAMDATE <- as.Date(dataTadpole$testingFrame$EXAMDATE)
 
-check <- forecastCognitiveStatus(CognitiveClassModels,dataTadpole$testingFrame,submissionTemplate)
+check <- forecastCognitiveStatus(CognitiveClassModels,dataTadpole$testingFrame)
 
 table(check$crossprediction$DX)
+table(check$lastDX)
 status <- (check$crossprediction$DX == "NL" | check$crossprediction$DX == "MCI to NL") + 
   2*(check$crossprediction$DX == "Dementia to MCI" | check$crossprediction$DX == "NL to MCI" | check$crossprediction$DX == "MCI") + 
   3*(check$crossprediction$DX == "MCI to Dementia" | check$crossprediction$DX == "Dementia")
 
 status[is.na(status)] <- 4
 
+statusLO <- (check$lastDX == "NL" | check$lastDX == "MCI to NL") + 
+  2*(check$lastDX == "Dementia to MCI" | check$lastDX == "NL to MCI" | check$lastDX == "MCI") + 
+  3*(check$lastDX == "MCI to Dementia" | check$lastDX == "Dementia")
+
 table(check$crossprediction$pDX,status)
+
+table(check$crossprediction$pDX,statusLO)
+table(status,statusLO)
+
+length(check$crossprediction$pDX)
+length(check$MCITOADprediction)
+
+table(statusLO,check$MCITOADprediction > 0.5)
+table(check$crossprediction$pDX,check$MCITOADprediction > 0.5)
+
+table(statusLO,check$NCToMCIprediction > 0.5)
+table(check$crossprediction$pDX,check$NCToMCIprediction > 0.5)
 
 print(nrow(check$crossprediction))
 

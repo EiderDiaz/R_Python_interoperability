@@ -45,7 +45,7 @@ TrainTadpoleClassModels <- function(AdjustedFrame,predictors,months=NULL,numberO
     deltaObservations <- TimePointsSubset[[i]][,deltaFeaturepredictors] - BaseTimepointSet[rownames(TimePointsSubset[[i]]),deltaFeaturepredictors]
     colnames(deltaObservations) <- paste("Delta",colnames(deltaObservations),sep="_")
     TimePointsSubset[[i]] <- cbind(TimePointsSubset[[i]],deltaObservations)
-    TimePointsSubset[[i]] <- TimePointsSubset[[i]][complete.cases(TimePointsSubset[[i]]),]
+    TimePointsSubset[[i]] <- TimePointsSubset[[i]][complete.cases(TimePointsSubset[[i]][,predictors]),]
     Orderbytimepoint <- rbind(Orderbytimepoint,TimePointsSubset[[i]])
     i <- i + 1
   }
