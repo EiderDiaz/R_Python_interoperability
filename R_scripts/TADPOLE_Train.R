@@ -123,6 +123,11 @@ TrainTadpoleClassModels <- function(AdjustedFrame,predictors,months=NULL,numberO
     print(nrow(set1))
     print(table(set1$class))
     MCI_to_ADSets[[n]] <- set1[,c("class",predictors)]
+    if (asFactor)
+    {
+      MCI_to_ADSets[[n]]$class <- as.factor(MCI_to_ADSets[[n]]$class)
+    }
+    
     MCI_TO_AD_Model[[n]] <- MLMethod(class ~ 1,MCI_to_ADSets[[n]],...)
 
     set1 <- subset(set1,class==1)
@@ -199,6 +204,10 @@ TrainTadpoleClassModels <- function(AdjustedFrame,predictors,months=NULL,numberO
     print(table(set1$class))
     
     NCConvSets[[n]] <- set1[,c("class",predictors)]
+    if (asFactor)
+    {
+      NCConvSets[[n]]$class <- as.factor(NCConvSets[[n]]$class)
+    }
     NCConv_Model[[n]] <- MLMethod(class ~ 1,NCConvSets[[n]],...)
 
     set1 <- subset(set1,class==1)
