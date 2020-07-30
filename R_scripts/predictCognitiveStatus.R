@@ -1,3 +1,12 @@
+#' Title
+#'
+#' @param Models the Prediciton models
+#' @param TestDataFrame the data set to predict
+#'
+#' @return the list of prediciotns per subject
+#' @export
+#'
+#' @examples
 forecastCognitiveStatus <- function(Models,TestDataFrame)
 {
   predictors <- Models$predictors
@@ -41,31 +50,45 @@ forecastCognitiveStatus <- function(Models,TestDataFrame)
   names(lastDX) <- BaseTimepointSet$RID
   print(sum(is.na(TestDataFrame$M)))
 #  totR <- 0
-  for (m in months)
+  if (length(months) > 1)
   {
-    TimePointsSubset[[i]] <- subset(TestDataFrame,M == m)
-#    totR <-  totR + nrow(TimePointsSubset[[i]])
-#    print(c(m,totR,nrow(TimePointsSubset[[i]])))
-    rownames(TimePointsSubset[[i]]) <- TimePointsSubset[[i]]$RID
-    TimePointsSubset[[i]]$Year_bl_LastVisit <- lastTimepointSet[TimePointsSubset[[i]]$RID,"Years_bl"]
-    TimePointsSubset[[i]]$Last_DX <-  lastTimepointSet[TimePointsSubset[[i]]$RID,"DX"]
-    ldx <- TimePointsSubset[[i]]$DX
-    names(ldx) <- TimePointsSubset[[i]]$RID
-    ldx <- ldx[!is.na(TimePointsSubset[[i]]$DX)]
-    lastDX[names(ldx)] <- ldx
-    lastDate[names(ldx)] <- TimePointsSubset[[i]][names(ldx),"EXAMDATE"]
-    TimePointsSubset[[i]]$TimeToLastVisit <- TimePointsSubset[[i]]$Year_bl_LastVisit - TimePointsSubset[[i]]$Years_bl
-    deltaObservations <- TimePointsSubset[[i]][,deltaFeaturepredictors] - BaseTimepointSet[rownames(TimePointsSubset[[i]]),deltaFeaturepredictors]
+    for (m in months)
+    {
+      TimePointsSubset[[i]] <- subset(TestDataFrame,M == m)
+      rownames(TimePointsSubset[[i]]) <- TimePointsSubset[[i]]$RID
+      TimePointsSubset[[i]]$Year_bl_LastVisit <- lastTimepointSet[TimePointsSubset[[i]]$RID,"Years_bl"]
+      TimePointsSubset[[i]]$Last_DX <-  lastTimepointSet[TimePointsSubset[[i]]$RID,"DX"]
+      ldx <- TimePointsSubset[[i]]$DX
+      names(ldx) <- TimePointsSubset[[i]]$RID
+      ldx <- ldx[!is.na(TimePointsSubset[[i]]$DX)]
+      lastDX[names(ldx)] <- ldx
+      lastDate[names(ldx)] <- TimePointsSubset[[i]][names(ldx),"EXAMDATE"]
+      TimePointsSubset[[i]]$TimeToLastVisit <- TimePointsSubset[[i]]$Year_bl_LastVisit - TimePointsSubset[[i]]$Years_bl
+      deltaObservations <- TimePointsSubset[[i]][,deltaFeaturepredictors] - BaseTimepointSet[rownames(TimePointsSubset[[i]]),deltaFeaturepredictors]
+      colnames(deltaObservations) <- paste("Delta",colnames(deltaObservations),sep="_")
+      TimePointsSubset[[i]] <- cbind(TimePointsSubset[[i]],deltaObservations)
+      Orderbytimepoint <- rbind(Orderbytimepoint,TimePointsSubset[[i]])
+      i <- i + 1
+    }
+    TestDataFrame <- Orderbytimepoint
+    Orderbytimepoint <- NULL
+    print(nrow(TestDataFrame))
+  }
+  else
+  {
+    TestDataFrame <- lastTimepointSet
+    TestDataFrame$M <- numeric(nrow(TestDataFrame))
+    TestDataFrame$Year_bl_LastVisit <- numeric(nrow(TestDataFrame))
+    TestDataFrame$TimeToLastVisit <- numeric(nrow(TestDataFrame))
+    deltaObservations <- TestDataFrame[,deltaFeaturepredictors] - BaseTimepointSet[rownames(TestDataFrame),deltaFeaturepredictors]
     colnames(deltaObservations) <- paste("Delta",colnames(deltaObservations),sep="_")
-    TimePointsSubset[[i]] <- cbind(TimePointsSubset[[i]],deltaObservations)
-    Orderbytimepoint <- rbind(Orderbytimepoint,TimePointsSubset[[i]])
-    i <- i + 1
+    TestDataFrame <- cbind(TestDataFrame,deltaObservations)
+    rownames(TestDataFrame) <- c(1:nrow(TestDataFrame))
+    print(nrow(TestDataFrame))
+    print(sum(is.na(lastTimepointSet)))
   }
   
-  TestDataFrame <- Orderbytimepoint
-  print(nrow(TestDataFrame))
   
-  Orderbytimepoint <- NULL
   
   
   if (is.null(Models$CrossModels[[1]]$oridinalModels))
@@ -107,6 +130,7 @@ forecastCognitiveStatus <- function(Models,TestDataFrame)
   lastTimepointSet <- TestDataFrame[c(pdis[1:(length(pdis)-1)] != pdis[-1],TRUE),]
   rownames(lastTimepointSet) <- lastTimepointSet$RID
   print(nrow(lastTimepointSet))
+  print(sum(is.na(lastTimepointSet)))
   
   
 

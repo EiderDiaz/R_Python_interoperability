@@ -23,21 +23,49 @@ FiveYearForeCast <- function(Classpredictions=NULL,ADAS_Predictions=NULL,Ventric
     2*(Classpredictions$lastKownDX == "Dementia to MCI" | Classpredictions$lastKownDX == "NL to MCI" | Classpredictions$lastKownDX == "MCI") + 
     3*(Classpredictions$lastKownDX == "MCI to Dementia" | Classpredictions$lastKownDX == "Dementia")
   names(statusLO) <- names(Classpredictions$lastKownDX)
+  print(sum(is.na(statusLO)))
+  print(table(statusLO))
   
   thrNCMCI <- max( (1.5-Classpredictions$NCMCIAUC), (1.0-Classpredictions$pNCtoMCIEvent) )
   thrMCINAD <- max( (1.5-Classpredictions$MCIADAUC), (1.0-Classpredictions$pMCItoADEvent) )           
   thrMCINC <- max ( (1.5-Classpredictions$MCINCAUC), (1.0-Classpredictions$pMCItoNCEvent) )
+
+  print(c(Classpredictions$MCIADAUC,Classpredictions$NCMCIAUC,Classpredictions$MCINCAUC))
+  print(c(Classpredictions$pMCItoADEvent,Classpredictions$pNCtoMCIEvent,Classpredictions$pMCItoNCEvent))
   
-  print(c(thrNCMCI,thrMCINAD,thrMCINC))
+#  W_MCIAD = 2*Classpredictions$pMCItoADEvent
+#  W_MCINC = 2*Classpredictions$pMCItoNCEvent
+#  W_NCMCI = 2*Classpredictions$pNCtoMCIEvent
+#  if (W_MCIAD>1) W_MCIAD <- 1
+#  if (W_MCINC>1) W_MCINC <- 1
+#  if (W_NCMCI>1) W_NCMCI <- 1
+#  W_MCIAD = 2*(Classpredictions$MCIADAUC-0.5)*W_MCIAD
+#  W_MCINC = 2*(Classpredictions$MCINCAUC-0.5)*W_MCINC
+#  W_NCMCI = 2*(Classpredictions$NCMCIAUC-0.5)*W_NCMCI
+  
+  W_MCIAD = 2*(Classpredictions$MCIADAUC-0.5)
+  W_MCINC = 2*(Classpredictions$MCINCAUC-0.5)
+  W_NCMCI = 2*(Classpredictions$NCMCIAUC-0.5)
+  
+  print(c(W_MCIAD,W_NCMCI,W_MCINC))
 
   for (n in 1:nrow(Subject_datestoPredict))
   {
       id <- RID[n]
       fdate <- Forecastdates[n] 
 
-      BaseCN_prob <- 1*(statusLO[id] == 1)
-      BaseMCI_prob <- 1*(statusLO[id] == 2)
-      BaseAD_prob <- 1*(statusLO[id] == 3)
+      if (is.na(statusLO[id]))
+      {
+        BaseCN_prob <- Classpredictions$crossprediction[id,"0"]
+        BaseMCI_prob <- Classpredictions$crossprediction[id,"1"]
+        BaseAD_prob <- Classpredictions$crossprediction[id,"2"]
+      }
+      else
+      {
+        BaseCN_prob <- 1.0*(statusLO[id] == 1)
+        BaseMCI_prob <- 1.0*(statusLO[id] == 2)
+        BaseAD_prob <- 1.0*(statusLO[id] == 3)
+      }
       
       TimeToAD <-  Classpredictions$MCITOADTimeprediction[id]
       TimeToMCI <-  Classpredictions$NCToMCITimeprediction[id]
@@ -52,17 +80,24 @@ FiveYearForeCast <- function(Classpredictions=NULL,ADAS_Predictions=NULL,Ventric
       MCINCTimeLine <- 1.0/(1.0+MCINCTimeLine)
       
       NCTOMCIprob <- Classpredictions$NCToMCIprediction[id]*NCMCITimeLine
-#      NCTOMCIprob <- NCTOMCIprob*( NCTOMCIprob > thrNCMCI ) 
 
       MCITOADprob <- Classpredictions$MCITOADprediction[id]*MCIADTimeLine
-#      MCITOADprob <- MCITOADprob*( MCITOADprob > thrMCINAD )  
 
       MCITONCprob <- Classpredictions$MCITONCprediction[id]*MCINCTimeLine
-#      MCITONCprob <- MCITONCprob*( MCITONCprob > thrMCINC )
 
-      finalNCProb <- BaseCN_prob*(1.0 - NCTOMCIprob) + BaseMCI_prob*MCITONCprob
-      finalMCIProb <- BaseMCI_prob*(1.0 - MCITOADprob) + BaseCN_prob*NCTOMCIprob
-      finalADProb <- BaseAD_prob + BaseMCI_prob*MCITOADprob
+      finalNCProb <- BaseCN_prob
+      finalMCIProb <-BaseMCI_prob
+      finalADProb <- BaseAD_prob
+      
+
+      finalNCProb_a <- BaseCN_prob*(1.0-W_NCMCI) + W_NCMCI*BaseCN_prob*(1.0 - NCTOMCIprob)
+      finalNCProb_b <- BaseCN_prob*(1.0-W_MCINC) + W_MCINC*BaseMCI_prob*MCITONCprob
+      finalNCProb <- (finalNCProb_a*W_NCMCI + finalNCProb_b*W_MCINC)/(W_MCINC+W_MCINC)
+      finalMCIProb_a <- BaseMCI_prob*(1.0-W_MCIAD) + W_MCIAD*BaseMCI_prob*(1.0 - MCITOADprob)
+      finalMCIProb_b <- BaseMCI_prob*(1.0-W_NCMCI) + W_NCMCI*BaseCN_prob*NCTOMCIprob
+      finalMCIProb_c <- BaseMCI_prob*(1.0-W_MCINC) + W_MCINC*BaseMCI_prob*(1.0 - MCITONCprob)
+      finalMCIProb <- (finalMCIProb_a*W_MCIAD + finalMCIProb_b*W_NCMCI + finalMCIProb_c*W_MCINC)/(W_MCIAD+W_NCMCI+W_MCINC)
+      finalADProb <- BaseAD_prob*(1.0-W_MCIAD) +  W_MCIAD*BaseMCI_prob*MCITOADprob
       
       totalProb <- finalNCProb + finalMCIProb + finalADProb
       finalNCProb <- finalNCProb/totalProb

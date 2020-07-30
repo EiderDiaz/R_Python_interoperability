@@ -9,7 +9,7 @@
 #It will return models that predict if a subject will convert to MCI to AD
 #it will return models that predict the time to conversion
 
-TrainTadpoleClassModels <- function(AdjustedFrame,predictors,months=NULL,numberOfRandomSamples=5,MLMethod=BSWiMS.model,asFactor=FALSE,...)
+TrainTadpoleClassModels <- function(AdjustedFrame,predictors,months=NULL,numberOfRandomSamples=5,delta=FALSE,MLMethod=BSWiMS.model,asFactor=FALSE,...)
 {
   AdjustedFrame$RID <- as.character(AdjustedFrame$RID)
   library("FRESA.CAD")
@@ -42,9 +42,12 @@ TrainTadpoleClassModels <- function(AdjustedFrame,predictors,months=NULL,numberO
     TimePointsSubset[[i]]$Year_bl_LastVisit <- lastTimepointSet[TimePointsSubset[[i]]$RID,"Years_bl"]
     TimePointsSubset[[i]]$Last_DX <- lastTimepointSet[TimePointsSubset[[i]]$RID,"DX"]
     TimePointsSubset[[i]]$TimeToLastVisit <- TimePointsSubset[[i]]$Year_bl_LastVisit - TimePointsSubset[[i]]$Years_bl
-    deltaObservations <- TimePointsSubset[[i]][,deltaFeaturepredictors] - BaseTimepointSet[rownames(TimePointsSubset[[i]]),deltaFeaturepredictors]
-    colnames(deltaObservations) <- paste("Delta",colnames(deltaObservations),sep="_")
-    TimePointsSubset[[i]] <- cbind(TimePointsSubset[[i]],deltaObservations)
+    if (delta)
+    {
+      deltaObservations <- TimePointsSubset[[i]][,deltaFeaturepredictors] - BaseTimepointSet[rownames(TimePointsSubset[[i]]),deltaFeaturepredictors]
+      colnames(deltaObservations) <- paste("Delta",colnames(deltaObservations),sep="_")
+      TimePointsSubset[[i]] <- cbind(TimePointsSubset[[i]],deltaObservations)
+    }
     TimePointsSubset[[i]] <- TimePointsSubset[[i]][complete.cases(TimePointsSubset[[i]][,predictors]),]
     Orderbytimepoint <- rbind(Orderbytimepoint,TimePointsSubset[[i]])
     i <- i + 1
@@ -55,7 +58,10 @@ TrainTadpoleClassModels <- function(AdjustedFrame,predictors,months=NULL,numberO
   AdjustedFrame <- AdjustedFrame[order(as.numeric(AdjustedFrame$RID)),]
   
   Orderbytimepoint <- NULL
-  predictors <- c(predictors,colnames(deltaObservations))
+  if (delta)
+  {
+    predictors <- c(predictors,colnames(deltaObservations))
+  }
   
 
   ## Get All the MCI subjects that progressed to AD
@@ -143,6 +149,8 @@ TrainTadpoleClassModels <- function(AdjustedFrame,predictors,months=NULL,numberO
     sm <- summary(MCI_TO_AD_Model[[n]])
     print(sm$tAUC)
     MCI_TO_AD_Model[[n]]$BSWiMS.model$bootCV$data <- NULL
+    MCI_TO_AD_Model[[n]]$BSWiMS.model$bootCV$testOutcome <- NULL
+    MCI_TO_AD_Model[[n]]$BSWiMS.model$bootCV$testPrediction <- NULL
     
 
     set1 <- subset(set1,class==1)
@@ -151,8 +159,10 @@ TrainTadpoleClassModels <- function(AdjustedFrame,predictors,months=NULL,numberO
     MCI_to_ADSets[[n]] <- set1[,c("TimeToEvent",predictors)]
     MCI_to_ADSets[[n]]$TimeToEvent <- set1$TimeToEvent
     MCI_TO_AD_TimeModel[[n]] <- MLMethod(TimeToEvent ~ .,MCI_to_ADSets[[n]],...)
+    MCI_TO_AD_TimeModel[[n]]$univariate <- NULL
     MCI_TO_AD_TimeModel[[n]]$BSWiMS.model$bootCV$data <- NULL
-    
+    MCI_TO_AD_TimeModel[[n]]$BSWiMS.model$bootCV$testOutcome <- NULL
+    MCI_TO_AD_TimeModel[[n]]$BSWiMS.model$bootCV$testPrediction <- NULL
   }
   pMCItoADEvent <- pMCItoADEvent/numberOfRandomSamples
   
@@ -234,6 +244,8 @@ TrainTadpoleClassModels <- function(AdjustedFrame,predictors,months=NULL,numberO
     
     MCI_TO_NC_Model[[n]] <- MLMethod(class ~ .,MCI_to_NCSets[[n]],...)
     MCI_TO_NC_Model[[n]]$BSWiMS.model$bootCV$data <- NULL
+    MCI_TO_NC_Model[[n]]$BSWiMS.model$bootCV$testOutcome <- NULL
+    MCI_TO_NC_Model[[n]]$BSWiMS.model$bootCV$testPrediction <- NULL
     
     sm <- summary(MCI_TO_NC_Model[[n]])
     print(sm$tAUC)
@@ -245,6 +257,8 @@ TrainTadpoleClassModels <- function(AdjustedFrame,predictors,months=NULL,numberO
     MCI_to_NCSets[[n]]$TimeToEvent <- set1$TimeToEvent
     MCI_TO_NC_TimeModel[[n]] <- MLMethod(TimeToEvent ~ .,MCI_to_NCSets[[n]],...)
     MCI_TO_NC_TimeModel[[n]]$BSWiMS.model$bootCV$data <- NULL
+    MCI_TO_NC_TimeModel[[n]]$BSWiMS.model$bootCV$testOutcome <- NULL
+    MCI_TO_NC_TimeModel[[n]]$BSWiMS.model$bootCV$testPrediction <- NULL
     
   }
   pMCItoNCEvent <- pMCItoNCEvent/numberOfRandomSamples
@@ -325,6 +339,9 @@ TrainTadpoleClassModels <- function(AdjustedFrame,predictors,months=NULL,numberO
     }
     NCConv_Model[[n]] <- MLMethod(class ~ .,NCConvSets[[n]],...)
     NCConv_Model[[n]]$BSWiMS.model$bootCV$data <- NULL 
+    NCConv_Model[[n]]$BSWiMS.model$bootCV$testOutcome <- NULL
+    NCConv_Model[[n]]$BSWiMS.model$bootCV$testPrediction <- NULL
+    
     sm <- summary(NCConv_Model[[n]])
     print(sm$tAUC)
     
@@ -334,6 +351,8 @@ TrainTadpoleClassModels <- function(AdjustedFrame,predictors,months=NULL,numberO
     NCConvSets[[n]]$TimeToEvent <- set1$TimeToEvent
     NL_TO_OTHER_TimeModel[[n]] <- MLMethod(TimeToEvent ~ .,NCConvSets[[n]],...)
     NL_TO_OTHER_TimeModel[[n]]$BSWiMS.model$bootCV$data <- NULL 
+    NL_TO_OTHER_TimeModel[[n]]$BSWiMS.model$bootCV$testOutcome <- NULL
+    NL_TO_OTHER_TimeModel[[n]]$BSWiMS.model$bootCV$testPrediction <- NULL
   }
   pNCtoMCIEvent <- pNCtoMCIEvent/numberOfRandomSamples
 
@@ -372,7 +391,17 @@ TrainTadpoleClassModels <- function(AdjustedFrame,predictors,months=NULL,numberO
     }
     AllADNI_Model[[n]] <- MLMethod(class ~ .,AllADNISets[[n]],...)
     AllADNI_Model[[n]]$BSWiMS.model$bootCV$data <- NULL 
+    AllADNI_Model[[n]]$BSWiMS.model$bootCV$testOutcome <- NULL
+    AllADNI_Model[[n]]$BSWiMS.model$bootCV$testPrediction <- NULL
     AllADNI_Model[[n]]$oridinalModels$data <- NULL
+    AllADNI_Model[[n]]$oridinalModels$theClassBaggs[[1]]$bagged.model$model <- NULL
+    AllADNI_Model[[n]]$oridinalModels$theClassBaggs[[2]]$bagged.model$model <- NULL
+    AllADNI_Model[[n]]$oridinalModels$theClassBaggs[[3]]$bagged.model$model <- NULL
+    AllADNI_Model[[n]]$oridinalModels$theBaggedModels[[1]]$bagged.model$model <- NULL
+    AllADNI_Model[[n]]$oridinalModels$theBaggedModels[[2]]$bagged.model$model <- NULL
+    AllADNI_Model[[n]]$oridinalModels$redBaggedModels[[1]]$bagged.model$model <- NULL
+    AllADNI_Model[[n]]$oridinalModels$redBaggedModels[[2]]$bagged.model$model <- NULL
+    AllADNI_Model[[n]]$oridinalModels$polr <- NULL
   }
   
   predicitionModels <- list(CrossModels = AllADNI_Model,
