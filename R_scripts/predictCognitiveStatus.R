@@ -109,19 +109,55 @@ forecastCognitiveStatus <- function(Models,TestDataFrame)
   print(nrow(lastTimepointSet))
   
   
+
+  
   MCITOADprediction <- predict(Models$MCIToADModels[[1]],lastTimepointSet)
   MCITOADTimeprediction <- predict(Models$MCIToADTimeModel[[1]],lastTimepointSet)
+  sm <- summary(Models$MCIToADModels[[1]])
+  MCIADAUC <- sm$tAUC
+  
+  MCITONCprediction <- predict(Models$MCIToNCModels[[1]],lastTimepointSet)
+  MCITONCTimeprediction <- predict(Models$MCIToNCTimeModel[[1]],lastTimepointSet)
+  sm <- summary(Models$MCIToNCModels[[1]])
+  MCINCAUC <- sm$tAUC
+  
   NCToMCIprediction <- predict(Models$NCToMCIModel[[1]],lastTimepointSet)
   NCToMCITimeprediction <- predict(Models$NCToMCITimeModel[[1]],lastTimepointSet)
+  sm <- summary(Models$NCToMCIModel[[1]])
+  NCMCIAUC <- sm$tAUC
+  
+  
   for (n in 2:length(Models$MCIToADModels))
   {
     MCITOADprediction <- MCITOADprediction + predict(Models$MCIToADModels[[n]],lastTimepointSet)
     MCITOADTimeprediction <- MCITOADTimeprediction + predict(Models$MCIToADTimeModel[[n]],lastTimepointSet)
+    sm <- summary(Models$MCIToADModels[[n]])
+    MCIADAUC <- MCIADAUC + sm$tAUC
+    
+    MCITONCprediction <- MCITONCprediction + predict(Models$MCIToNCModels[[n]],lastTimepointSet)
+    MCITONCTimeprediction <- MCITONCTimeprediction + predict(Models$MCIToNCTimeModel[[n]],lastTimepointSet)
+    sm <- summary(Models$MCIToNCModels[[n]])
+    MCINCAUC <- MCINCAUC + sm$tAUC
+    
     NCToMCIprediction <- NCToMCIprediction + predict(Models$NCToMCIModel[[n]],lastTimepointSet)
     NCToMCITimeprediction <- NCToMCITimeprediction + predict(Models$NCToMCITimeModel[[n]],lastTimepointSet)
+    sm <- summary(Models$NCToMCIModel[[n]])
+    NCMCIAUC <- NCMCIAUC + sm$tAUC
+    
   }
+  #Models$pMCItoADEvent
+  #Models$pMCItoNCEvent
+  #Models$pNCtoMCIEvent
+
+  MCIADAUC <- MCIADAUC/length(Models$CrossModels)
   MCITOADprediction <- MCITOADprediction/length(Models$CrossModels)
   MCITOADTimeprediction <- MCITOADTimeprediction/length(Models$CrossModels)
+
+  MCINCAUC <- MCINCAUC/length(Models$CrossModels)
+  MCITONCprediction <- MCITONCprediction/length(Models$CrossModels)
+  MCITONCTimeprediction <- MCITONCTimeprediction/length(Models$CrossModels)
+  
+  NCMCIAUC <- NCMCIAUC/length(Models$CrossModels)
   NCToMCIprediction <- NCToMCIprediction/length(Models$CrossModels)
   NCToMCITimeprediction <- NCToMCITimeprediction/length(Models$CrossModels)
   
@@ -132,11 +168,19 @@ forecastCognitiveStatus <- function(Models,TestDataFrame)
                       crossprediction = crossprediction,
                       MCITOADprediction = MCITOADprediction,
                       MCITOADTimeprediction = MCITOADTimeprediction,
+                      MCITONCprediction = MCITONCprediction,
+                      MCITONCTimeprediction = MCITONCTimeprediction,
                       NCToMCIprediction = NCToMCIprediction,
                       NCToMCITimeprediction = NCToMCITimeprediction,
                       lastKownDX = lastDX,
-                      lastDateDX = lastDate
-                      )
+                      lastDateDX = lastDate,
+                      MCIADAUC = MCIADAUC,
+                      MCINCAUC = MCINCAUC,
+                      NCMCIAUC = NCMCIAUC,
+                      pMCItoADEvent = Models$pMCItoADEvent,
+                      pMCItoNCEvent = Models$pMCItoNCEvent,
+                      pNCtoMCIEvent = Models$pNCtoMCIEvent
+  )
   
   
   return (predictions)
