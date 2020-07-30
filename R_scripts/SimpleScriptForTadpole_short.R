@@ -42,6 +42,7 @@ save(CognitiveClassModels,file="CognitiveClassModels_10b.RDATA")
 load(file="CognitiveClassModels_10b.RDATA")
 
 predictADNI <- forecastCognitiveStatus(CognitiveClassModels,dataTadpole$testingFrame)
-forecast <- FiveYearForeCast(predictADNI,Subject_datestoPredict=submissionTemplate)
 
+forecast <- FiveYearForeCast(predictADNI,Subject_datestoPredict=submissionTemplate)
+write.csv(forecast,file="forecastJTP.csv")
 

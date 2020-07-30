@@ -44,22 +44,22 @@ FiveYearForeCast <- function(Classpredictions=NULL,ADAS_Predictions=NULL,Ventric
       TimeToNC <-  Classpredictions$MCITONCTimeprediction[id]
 
       timeInterval <- as.numeric(fdate-Classpredictions$predictedTimePointData[id,"EXAMDATE"])/365.25
-      NCMCITimeLine <- exp(-(timeInterval-0.75*TimeToMCI)/(0.25*TimeToMCI))
+      NCMCITimeLine <- exp(-(timeInterval-TimeToMCI)/(0.25*TimeToMCI))
       NCMCITimeLine <- 1.0/(1.0+NCMCITimeLine)
-      MCIADTimeLine <- exp(-(timeInterval-0.75*TimeToAD)/(0.25*TimeToAD))
+      MCIADTimeLine <- exp(-(timeInterval-TimeToAD)/(0.25*TimeToAD))
       MCIADTimeLine <- 1.0/(1.0+MCIADTimeLine)
-      MCINCTimeLine <- exp(-(timeInterval-0.75*TimeToNC)/(0.25*TimeToNC))
+      MCINCTimeLine <- exp(-(timeInterval-TimeToNC)/(0.25*TimeToNC))
       MCINCTimeLine <- 1.0/(1.0+MCINCTimeLine)
       
       NCTOMCIprob <- Classpredictions$NCToMCIprediction[id]*NCMCITimeLine
-      NCTOMCIprob <- NCTOMCIprob*( NCTOMCIprob > thrNCMCI ) 
-      
+#      NCTOMCIprob <- NCTOMCIprob*( NCTOMCIprob > thrNCMCI ) 
+
       MCITOADprob <- Classpredictions$MCITOADprediction[id]*MCIADTimeLine
-      MCITOADprob <- MCITOADprob*( MCITOADprob > thrMCINAD )  
-      
+#      MCITOADprob <- MCITOADprob*( MCITOADprob > thrMCINAD )  
+
       MCITONCprob <- Classpredictions$MCITONCprediction[id]*MCINCTimeLine
-      MCITONCprob <- MCITONCprob*( MCITONCprob > thrMCINC )
-      
+#      MCITONCprob <- MCITONCprob*( MCITONCprob > thrMCINC )
+
       finalNCProb <- BaseCN_prob*(1.0 - NCTOMCIprob) + BaseMCI_prob*MCITONCprob
       finalMCIProb <- BaseMCI_prob*(1.0 - MCITOADprob) + BaseCN_prob*NCTOMCIprob
       finalADProb <- BaseAD_prob + BaseMCI_prob*MCITOADprob
