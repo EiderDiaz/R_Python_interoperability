@@ -9,7 +9,7 @@
 #Train Adjusted
 #Test Adjusted
 
-dataTADPOLEPreprocesing <- function(train_frame,test_Frame,dictionary,MinVisit=36,colImputeThreshold=0.25,rowImputeThreshold=0.10)
+dataTADPOLEPreprocesing <- function(train_frame,test_Frame,dictionary,MinVisit=36,colImputeThreshold=0.25,rowImputeThreshold=0.25,includeID=TRUE)
 {
   library("FRESA.CAD")
   
@@ -20,6 +20,15 @@ dataTADPOLEPreprocesing <- function(train_frame,test_Frame,dictionary,MinVisit=3
   QuestionsColumnsSet1 <- c("CDRSB","ADAS11","ADAS13","MMSE","RAVLT_learning","RAVLT_immediate","FAQ","MOCA","EcogPtMem","EcogPtLang","EcogPtVisspat","EcogPtPlan","EcogPtOrgan","EcogPtDivatt","EcogPtTotal","EcogSPMem","EcogSPLang","EcogSPVisspat","EcogSPPlan","EcogSPOrgan","EcogSPDivatt","EcogSPTotal")
   QuestionsColumnsSet2 <- c("CDRSB_bl","ADAS11_bl","ADAS13_bl","MMSE_bl","RAVLT_learning_bl","RAVLT_immediate_bl","FAQ_bl","MOCA_bl","EcogPtMem_bl","EcogPtLang_bl","EcogPtVisspat_bl","EcogPtPlan_bl","EcogPtOrgan_bl","EcogPtDivatt_bl","EcogPtTotal_bl","EcogSPMem_bl","EcogSPLang_bl","EcogSPVisspat_bl","EcogSPPlan_bl","EcogSPOrgan_bl","EcogSPDivatt_bl","EcogSPTotal_bl")
   BaseFeaturesColumnsData <- c("APOE4","FDG","PIB","AV45","Ventricles","Hippocampus","WholeBrain","Entorhinal","Fusiform","MidTemp","ICV","Ventricles_bl","Hippocampus_bl","WholeBrain_bl","Entorhinal_bl","Fusiform_bl","MidTemp_bl","ICV_bl","FDG_bl","PIB_bl","AV45_bl","ABETA_UPENNBIOMK9_04_19_17","TAU_UPENNBIOMK9_04_19_17","PTAU_UPENNBIOMK9_04_19_17")
+  
+  train_frame$RID <- as.numeric(train_frame$RID)
+  train_frame$AGE <- as.numeric(train_frame$AGE)
+  train_frame$PTGENDER <- 1*(train_frame$PTGENDER=="Male")
+  test_Frame$RID <- as.numeric(test_Frame$RID)
+  test_Frame$AGE <- as.numeric(test_Frame$AGE)
+  test_Frame$PTGENDER <- 1*(test_Frame$PTGENDER=="Male")
+  
+  
   
   combinedBasicCol <- c(SetIDSColumns,DatesColumns,Diagnosis,BasicColumns)
   notQuantitative <- c(1:length(combinedBasicCol))
@@ -223,15 +232,27 @@ dataTADPOLEPreprocesing <- function(train_frame,test_Frame,dictionary,MinVisit=3
   
   train_frame_Transformed_red <- train_frame_Transformed_red[!mssingRowData,]
   
-  colnames(train_frame_Transformed_red)
+#  colnames(train_frame_Transformed_red)
+
+  theincluded <- unique(c("RID","AGE","PTGENDER",colnames(train_frame_Transformed_red)[-notQuantitative]))
+  colnotincluded <- !(colnames(train_frame_Transformed_red) %in% theincluded)
   
   
-  TadpoleOnlyFeatures <- train_frame_Transformed_red[,-notQuantitative]
+  TadpoleOnlyFeatures <- train_frame_Transformed_red[,theincluded]
   
   
   TadpoleTrain_Imputed <- train_frame_Transformed_red
   allAdustedZrank <- TadpoleTrain_Imputed
-  TadpoleTrain_Imputed <- cbind(train_frame_Transformed_red[,notQuantitative],nearestNeighborImpute(TadpoleOnlyFeatures))
+  TadpoleTrain_Imputed <- cbind(train_frame_Transformed_red[,colnotincluded],nearestNeighborImpute(TadpoleOnlyFeatures,catgoricCol=c("RID","PTGENDER")))
+  checkVV <- TadpoleTrain_Imputed$Ventricles < 0.99*TadpoleTrain_Imputed$Ventricles_bl
+  checkVV <- checkVV | TadpoleTrain_Imputed$Ventricles > 1.5*TadpoleTrain_Imputed$Ventricles_bl
+  checkVV <- checkVV & (is.na(TadpoleOnlyFeatures$Ventricles) & !is.na(TadpoleOnlyFeatures$Ventricles_bl))
+  print(sum(checkVV))
+  TadpoleTrain_Imputed$Ventricles[checkVV] <- TadpoleTrain_Imputed$Ventricles_bl[checkVV]
+  checkICV <- TadpoleTrain_Imputed$ICV < 0.95*TadpoleTrain_Imputed$ICV_bl | TadpoleTrain_Imputed$ICV > 1.20*TadpoleTrain_Imputed$ICV_bl
+  checkICV <- checkICV & is.na(TadpoleOnlyFeatures$ICV) & !is.na(TadpoleOnlyFeatures$ICV_bl)
+  TadpoleTrain_Imputed$ICV[checkICV] <- TadpoleTrain_Imputed$ICV_bl[checkICV]
+  print(sum(checkICV))
   
   fnames <- colnames(TadpoleTrain_Imputed)
   fnames <- str_replace_all(fnames," ","_")
@@ -241,8 +262,8 @@ dataTADPOLEPreprocesing <- function(train_frame,test_Frame,dictionary,MinVisit=3
   colnames(TadpoleTrain_Imputed) <- fnames
 
   table(TadpoleTrain_Imputed$PTGENDER)
-  TadpoleTrain_Imputed$PTGENDER <- 1*(TadpoleTrain_Imputed$PTGENDER=="Male")
-  table(TadpoleTrain_Imputed$PTGENDER)
+#  TadpoleTrain_Imputed$PTGENDER <- 1*(TadpoleTrain_Imputed$PTGENDER=="Male")
+#  table(TadpoleTrain_Imputed$PTGENDER)
 
   TadpoleTrain_Imputed$AGE <- TadpoleTrain_Imputed$AGE + TadpoleTrain_Imputed$Years_bl
 
@@ -283,8 +304,8 @@ dataTADPOLEPreprocesing <- function(train_frame,test_Frame,dictionary,MinVisit=3
     
     test_Frame_Transformed_red <- rbind(test_Frame_Transformed_red,traininnotest)
     print(nrow(test_Frame_Transformed_red))
-    test_Frame_Transformed_red <- test_Frame_Transformed_red[order(test_Frame_Transformed_red$VISCODE),]
-    test_Frame_Transformed_red <- test_Frame_Transformed_red[order(test_Frame_Transformed_red$RID),]
+    test_Frame_Transformed_red <- test_Frame_Transformed_red[order(test_Frame_Transformed_red$EXAMDATE),]
+    test_Frame_Transformed_red <- test_Frame_Transformed_red[order(as.integer(test_Frame_Transformed_red$RID)),]
     
     
 #    checkRowmissing <- 3 #at least 3 features
@@ -294,15 +315,21 @@ dataTADPOLEPreprocesing <- function(train_frame,test_Frame,dictionary,MinVisit=3
     
     test_Frame_Transformed_red$RID <- as.numeric(test_Frame_Transformed_red$RID)
     test_Frame_Transformed_red$AGE <- as.numeric(test_Frame_Transformed_red$AGE)
-    test_Frame_Transformed_red$PTGENDER <- 1*(test_Frame_Transformed_red$PTGENDER=="Male")
+#    test_Frame_Transformed_red$PTGENDER <- 1*(test_Frame_Transformed_red$PTGENDER=="Male")
     
     train_frame_Transformed_red$RID <- as.numeric(train_frame_Transformed_red$RID)
     train_frame_Transformed_red$AGE <- as.numeric(train_frame_Transformed_red$AGE)
-    train_frame_Transformed_red$PTGENDER <- 1*(train_frame_Transformed_red$PTGENDER=="Male")
+#    train_frame_Transformed_red$PTGENDER <- 1*(train_frame_Transformed_red$PTGENDER=="Male")
     
 #    print(colnames(test_Frame_Transformed_red))
     
-    theincluded <- unique(c("RID","AGE","PTGENDER",colnames(test_Frame_Transformed_red)[-notQuantitative]))
+    theincluded <- unique(c("AGE","PTGENDER",colnames(test_Frame_Transformed_red)[-notQuantitative]))
+    colcategorical <- c("PTGENDER")
+    if (includeID)
+    {
+      theincluded <- c("RID",theincluded)
+      colcategorical <- c("RID",colcategorical)
+    }
     TadpoleOnlyFeatures <- test_Frame_Transformed_red[,theincluded]
     TadpoleRefOnlyFeatures <- train_frame_Transformed_red[,theincluded]
     
@@ -313,7 +340,17 @@ dataTADPOLEPreprocesing <- function(train_frame,test_Frame,dictionary,MinVisit=3
 #    print(summary(TadpoleOnlyFeatures))
 #    print(summary(TadpoleRefOnlyFeatures))
     
-    Tadpole_Imputed <- nearestNeighborImpute(TadpoleOnlyFeatures,TadpoleRefOnlyFeatures)
+    Tadpole_Imputed <- nearestNeighborImpute(TadpoleOnlyFeatures,TadpoleRefOnlyFeatures,catgoricCol=colcategorical,useorder=includeID)
+    checkVV <- Tadpole_Imputed$Ventricles < 0.99*Tadpole_Imputed$Ventricles_bl
+    checkVV <- checkVV | Tadpole_Imputed$Ventricles > 1.5*Tadpole_Imputed$Ventricles_bl
+    Tadpole_Imputed$Ventricles[checkVV & is.na(TadpoleOnlyFeatures$Ventricles)] <- Tadpole_Imputed$Ventricles_bl[checkVV & is.na(TadpoleOnlyFeatures$Ventricles)]
+    Tadpole_Imputed$Ventricles_bl[checkVV & is.na(TadpoleOnlyFeatures$Ventricles_bl)] <- Tadpole_Imputed$Ventricles[checkVV & is.na(TadpoleOnlyFeatures$Ventricles_bl)]
+    checkICV <- Tadpole_Imputed$ICV < 0.95*Tadpole_Imputed$ICV_bl | Tadpole_Imputed$ICV > 1.20*Tadpole_Imputed$ICV_bl
+    Tadpole_Imputed$ICV[checkICV & is.na(TadpoleOnlyFeatures$ICV)] <- Tadpole_Imputed$ICV_bl[checkICV & is.na(TadpoleOnlyFeatures$ICV)]
+    Tadpole_Imputed$ICV_bl[checkICV  & is.na(TadpoleOnlyFeatures$ICV_bl)] <- Tadpole_Imputed$ICV[checkICV  & is.na(TadpoleOnlyFeatures$ICV_bl)]
+    
+    
+        
     print(c(nrow(Tadpole_Imputed),ncol(Tadpole_Imputed)))
     Tadpole_Imputed <- cbind(test_Frame_Transformed_red[,colnotincluded],Tadpole_Imputed)
     print(c(nrow(Tadpole_Imputed),ncol(Tadpole_Imputed)))
@@ -325,7 +362,7 @@ dataTADPOLEPreprocesing <- function(train_frame,test_Frame,dictionary,MinVisit=3
     fnames <- str_replace_all(fnames,"//.","_")
     colnames(Tadpole_Imputed) <- fnames
    
-    table(Tadpole_Imputed$PTGENDER)
+    print(table(Tadpole_Imputed$PTGENDER))
 
     testAdusted <- featureAdjustment(predictors, baseModel="1+AGE+nICV",data=Tadpole_Imputed,referenceframe=cognitiveNormal,strata="PTGENDER", type = "LM", pvalue = 0.001)
    
@@ -339,7 +376,11 @@ dataTADPOLEPreprocesing <- function(train_frame,test_Frame,dictionary,MinVisit=3
     
   
   
-  DataFrames <- list(AdjustedTrainFrame=trainAdustedZrank,testingFrame = testAdustedZrank)
+  DataFrames <- list(AdjustedTrainFrame=trainAdustedZrank,
+                     testingFrame = testAdustedZrank,
+                     Train_Imputed = TadpoleTrain_Imputed,
+                     Test_Imputed = Tadpole_Imputed
+                     )
   
   return (DataFrames)
 }

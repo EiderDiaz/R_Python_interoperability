@@ -10,7 +10,7 @@
 #' @export
 #'
 #' @examples
-FiveYearForeCast <- function(Classpredictions=NULL,ADAS_Predictions=NULL,Ventricle_Predictions=NULL,Subject_datestoPredict=NULL)
+FiveYearForeCast <- function(Classpredictions=NULL,testDataset=NULL,ADAS_Ventricle_Models=NULL,logt=FALSE,Subject_datestoPredict=NULL)
 {
   predictedFrame <-NULL
   classPredictions <- NULL
@@ -48,11 +48,25 @@ FiveYearForeCast <- function(Classpredictions=NULL,ADAS_Predictions=NULL,Ventric
   W_NCMCI = 2*(Classpredictions$NCMCIAUC-0.5)
   
   print(c(W_MCIAD,W_NCMCI,W_MCINC))
-
+  
+  ida <- RID[1]
+  afdate=Forecastdates[1]
+  VentricleAdas <- forecastRegressions(ADAS_Ventricle_Models,testDataset,futuredate=afdate)
+  m = 0
+  print(VentricleAdas$ADAS13_NC[2,])
+  
   for (n in 1:nrow(Subject_datestoPredict))
   {
       id <- RID[n]
       fdate <- Forecastdates[n] 
+      if (fdate != afdate)
+      {
+        print(fdate)
+        VentricleAdas <- forecastRegressions(ADAS_Ventricle_Models,testDataset,futuredate=Forecastdates[n])
+        m = 0
+      }
+      m = m + 1
+      afdate <- fdate
 
       if (is.na(statusLO[id]))
       {
@@ -66,19 +80,19 @@ FiveYearForeCast <- function(Classpredictions=NULL,ADAS_Predictions=NULL,Ventric
         BaseMCI_prob <- 1.0*(statusLO[id] == 2)
         BaseAD_prob <- 1.0*(statusLO[id] == 3)
       }
-      
       TimeToAD <-  Classpredictions$MCITOADTimeprediction[id]
       TimeToMCI <-  Classpredictions$NCToMCITimeprediction[id]
       TimeToNC <-  Classpredictions$MCITONCTimeprediction[id]
+      
 
       timeInterval <- as.numeric(fdate-Classpredictions$predictedTimePointData[id,"EXAMDATE"])/365.25
-      NCMCITimeLine <- exp(-(timeInterval-TimeToMCI)/(0.25*TimeToMCI))
-      NCMCITimeLine <- 1.0/(1.0+NCMCITimeLine)
-      MCIADTimeLine <- exp(-(timeInterval-TimeToAD)/(0.25*TimeToAD))
-      MCIADTimeLine <- 1.0/(1.0+MCIADTimeLine)
-      MCINCTimeLine <- exp(-(timeInterval-TimeToNC)/(0.25*TimeToNC))
-      MCINCTimeLine <- 1.0/(1.0+MCINCTimeLine)
-      
+        NCMCITimeLine <- exp(-(timeInterval-TimeToMCI)/(0.25*TimeToMCI))
+        NCMCITimeLine <- 1.0/(1.0+NCMCITimeLine)
+        MCIADTimeLine <- exp(-(timeInterval-TimeToAD)/(0.25*TimeToAD))
+        MCIADTimeLine <- 1.0/(1.0+MCIADTimeLine)
+        MCINCTimeLine <- exp(-(timeInterval-TimeToNC)/(0.25*TimeToNC))
+        MCINCTimeLine <- 1.0/(1.0+MCINCTimeLine)
+
       NCTOMCIprob <- Classpredictions$NCToMCIprediction[id]*NCMCITimeLine
 
       MCITOADprob <- Classpredictions$MCITOADprediction[id]*MCIADTimeLine
@@ -107,6 +121,29 @@ FiveYearForeCast <- function(Classpredictions=NULL,ADAS_Predictions=NULL,Ventric
       Subject_datestoPredict[n,4] <- as.numeric(finalNCProb)
       Subject_datestoPredict[n,5] <- as.numeric(finalMCIProb)
       Subject_datestoPredict[n,6] <- as.numeric(finalADProb)
+
+      
+      
+      Adas13 <- BaseCN_prob*VentricleAdas$ADAS13_NC[id,] + BaseMCI_prob*VentricleAdas$ADAS13_MCI[id,] + BaseAD_prob*VentricleAdas$ADAS13_AD[id,]
+      if (logt)
+      {
+        Adas13 <- exp(Adas13)-1
+      }
+      ADSAS13pred <- as.vector(quantile(Adas13, probs = c(0.25, 0.5, 0.75), na.rm = TRUE,names = FALSE, type = 7));
+
+      Subject_datestoPredict[n,7] <- ADSAS13pred[2]
+      Subject_datestoPredict[n,8] <- ADSAS13pred[1]
+      Subject_datestoPredict[n,9] <- ADSAS13pred[3]
+
+      Ventricle <- BaseCN_prob*VentricleAdas$Ventricles_NC[id,] + BaseMCI_prob*VentricleAdas$Ventricles_MCI[id,] + BaseAD_prob*VentricleAdas$Ventricles_AD[id,]
+      if (logt)
+      {
+        Ventricle <- exp(Ventricle)
+      }
+      Ventriclepred <- as.vector(quantile(Ventricle, probs = c(0.25, 0.5, 0.75), na.rm = TRUE,names = FALSE, type = 7));
+      Subject_datestoPredict[n,10] <- Ventriclepred[2]
+      Subject_datestoPredict[n,11] <- Ventriclepred[1]
+      Subject_datestoPredict[n,12] <- Ventriclepred[3]
   }
     
   return (Subject_datestoPredict)
