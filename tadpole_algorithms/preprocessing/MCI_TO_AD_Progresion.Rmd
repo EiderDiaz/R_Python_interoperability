@@ -5,7 +5,32 @@ output: html_notebook
 
 ```{r}
 library("FRESA.CAD")
+library(readr)
+tamez_tidy_tadpole <- read_csv("/Users/Eider/Documents/GitHub/R_Python_interoperability/tamez_tidy_tadpole.csv")
 
+#predictors <- c("AGE","PTGENDER","Years_bl",colnames(tamez_tidy_tadpole)[-c(1:22)])
+#limpio <- tamez_tidy_tadpole[,predictors]
+unique(tamez_tidy_tadpole$DX)
+tamez_tidy_tadpole$DX <- as.numeric(as.factor(tamez_tidy_tadpole$DX))
+
+```
+
+
+```{r}
+library(caret)
+  tunningctrl <- trainControl(
+    method = "repeatedcv", 
+    number = 5,
+    repeats = 3
+  )  
+ 
+  gbm_fit <- train(as.factor(DX) ~ .,
+                   tamez_tidy_tadpole, 
+                   method = "gbm",  
+                   trControl = tunningctrl,
+                   preProc = c("center", "scale"),
+                   verbose = FALSE)
+  
 ```
 
 # Predict MCI to AD progresion
@@ -179,4 +204,36 @@ pr <- predict(modeltimetoEvent,MCI_to_AD_Timeset)
 cStats <- predictionStats_regression(cbind(MCI_to_AD_Timeset$TimeToEvent,pr),plotname = "Time")
 
 ```
+
+
+
+```{r}
+
+library(caret)
+
+#diabetes <- read_csv("OneDrive/Documentos/MCC/Verano 2020/data/diabetes.csv")
+
+
+cvCtrl = trainControl(method = "repeatedcv",
+                            number= 10,
+                            repeats = 2)
+
+columns_predictors = diabetes[ , c("age", "acidity")]                   # Subset by name
+
+columns_response = diabetes[ , c("y")]                   # Subset by name
+
+caret_model = train( columns_predictors,
+                     columns_response,
+                     method = "lm",
+                     preProc = c("center", "scale"),
+                     trControl = cvCtrl)
+
+
+
+cvCtrl
+
+```
+
+
+
 

@@ -9,8 +9,13 @@
 #Train Adjusted
 #Test Adjusted
 
-dataTADPOLEPreprocesing <- function(train_frame,test_Frame,dictionary,MinVisit=36,colImputeThreshold=0.25,rowImputeThreshold=0.25,includeID=TRUE)
-{
+dataTADPOLEPreprocesing <- function(train_frame,
+                                    test_Frame,
+                                    dictionary,
+                                    MinVisit=36,
+                                    colImputeThreshold=0.25,
+                                    rowImputeThreshold=0.25,
+                                    includeID=TRUE){
   library("FRESA.CAD")
   
   SetIDSColumns <- c("RID","D1","D2","SITE","COLPROT","ORIGPROT")

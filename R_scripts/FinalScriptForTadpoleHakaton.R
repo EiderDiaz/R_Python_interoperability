@@ -2,19 +2,19 @@
 library(readxl)
 
 ### The scripts 
-source('~/GitHub/TADPOLE/dataPreprocessing.R')
-source('~/GitHub/TADPOLE/TADPOLE_Train.R')
-source('~/GitHub/TADPOLE/predictCognitiveStatus.R')
-source('~/GitHub/TADPOLE/FiveYearForecast.R')
-source('~/GitHub/TADPOLE/TADPOLE_Train_ADAS_ICV.R')
-source('~/GitHub/TADPOLE/predictTADPOLERegresions.R')
+source('./R_scripts/dataPreprocessing.R')
+source('./R_scripts/TADPOLE_Train.R')
+source('./R_scripts/predictCognitiveStatus.R')
+source('./R_scripts/FiveYearForecast.R')
+source('./R_scripts/TADPOLE_Train_ADAS_ICV.R')
+source('./R_scripts/predictTADPOLERegresions.R')
 
 
-TADPOLE_D1_D2_Dict <- read.csv("C:/Users/jtame/Dropbox (Personal)/Documents/FRESACAD/TADPOLE/TADPOLE/TADPOLE_D1_D2_Dict.csv", na.strings=c("NA",-4,"-4.0",""," "))
-TADPOLE_D1_D2 <- read.csv("C:/Users/jtame/Dropbox (Personal)/Documents/FRESACAD/TADPOLE/TADPOLE/TADPOLE_D1_D2.csv", na.strings=c("NA",-4,"-4.0",""," "))
-TADPOLE_D3 <- read.csv("C:/Users/jtame/Dropbox (Personal)/Documents/FRESACAD/TADPOLE/TADPOLE/TADPOLE_D3.csv", na.strings=c("NA",-4,"-4.0",""," ","NaN"))
+TADPOLE_D1_D2_Dict <- read.csv("./data/TADPOLE_D1_D2_Dict.csv", na.strings=c("NA",-4,"-4.0",""," "))
+TADPOLE_D1_D2 <- read.csv("./data/TADPOLE_D1_D2.csv", na.strings=c("NA",-4,"-4.0",""," "))
+TADPOLE_D3 <- read.csv("./data/TADPOLE_D3.csv", na.strings=c("NA",-4,"-4.0",""," ","NaN"))
 
-submissionTemplate <- as.data.frame(read_excel("TADPOLE_Simple_Submission_TeamName.xlsx"))
+submissionTemplate <- as.data.frame(read_excel("./data/TADPOLE_Simple_Submission_TeamName.xlsx"))
 
 submissionTemplate$`Forecast Date` <- as.Date(paste(submissionTemplate$`Forecast Date`,"-01",sep=""))
 submissionTemplate$`CN relative probability` <- as.numeric(nrow(submissionTemplate))
@@ -55,7 +55,12 @@ D2TesingSet <- D2TesingSet[order(D2TesingSet$EXAMDATE),]
 D2TesingSet <- D2TesingSet[order(as.numeric(D2TesingSet$RID)),]
 
 
-dataTadpole <- dataTADPOLEPreprocesing(TrainingSet,D2TesingSet,TADPOLE_D1_D2_Dict,MinVisit=36,colImputeThreshold=0.25,rowImputeThreshold=0.10)
+dataTadpole <- dataTADPOLEPreprocesing(TrainingSet,
+                                       D2TesingSet,
+                                       TADPOLE_D1_D2_Dict,
+                                       MinVisit=36,
+                                       colImputeThreshold=0.25,
+                                       rowImputeThreshold=0.10)
 
 
 save(dataTadpole,file="D2DataFrames_impute.RDATA")
